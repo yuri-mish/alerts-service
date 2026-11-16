@@ -1,17 +1,35 @@
-// Маршрути без ключа: сторінки сайту, статистика для графіка, форми лендінгу, вебхук Telegram.
+// Маршрути без ключа: сторінки сайту, документація API, статистика для графіка, форми лендінгу, вебхук Telegram.
+import { createRequire } from 'node:module';
+import path from 'node:path';
 import express, { type Request, type Response, type Router } from 'express';
 import { config } from '../../core/config.ts';
 import { log } from '../../core/log.ts';
 import { createSitePages, type StaticPage } from '../../site/site.ts';
-import { handleTelegramUpdate, parseKeyRequest, submitKeyRequest, type TelegramUpdate } from '../../keys/key-requests.ts';
+import {
+  handleTelegramUpdate,
+  parseKeyRequest,
+  submitKeyRequest,
+  type TelegramUpdate,
+} from '../../keys/key-requests.ts';
 import { parseContactMessage, submitContactMessage } from '../../notify/contact.ts';
 import { clientIp, enforceLimit, HttpError, jsonBody, sameKey, type Deps } from '../common.ts';
+import { createOpenApiSpec } from '../openapi.ts';
+
+/** Тека з файлами Swagger UI (пакет swagger-ui-dist; без типів, тому шлях - через package.json) */
+const SWAGGER_UI_DIR = path.dirname(createRequire(import.meta.url).resolve('swagger-ui-dist/package.json'));
 
 export const createPublicRouter = ({ ctx, db, limiters, publicStats }: Deps): Router => {
   /** Статична сторінка; на HEAD Express сам не надсилає тіло (для пошукових роботів) */
   const sendPage = (page: StaticPage) => (_req: Request, res: Response) => {
     res.set({ 'Content-Type': page.contentType, 'Cache-Control': page.cacheControl, ...page.headers });
     res.send(page.body);
+  };
+
+  /** Специфікація OpenAPI (збирається один раз) */
+  const openApiSpec = createOpenApiSpec();
+  const getOpenApi = (_req: Request, res: Response) => {
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json(openApiSpec);
   };
 
   /** Агрегат для графіка на лендінгу (кеш 10 хв) */
@@ -61,6 +79,9 @@ export const createPublicRouter = ({ ctx, db, limiters, publicStats }: Deps): Ro
   const router = express.Router();
   // лендінг, robots.txt, sitemap.xml, іконка, адмінка (дані адмінки - лише з ключем)
   for (const [path, page] of createSitePages(config.publicUrl)) router.get(path, sendPage(page));
+  // документація API: специфікація OpenAPI і файли Swagger UI (сторінка /docs - серед сторінок сайту)
+  router.get('/openapi.json', getOpenApi);
+  router.use('/docs/assets', express.static(SWAGGER_UI_DIR, { maxAge: '1d', index: false }));
   router.get('/stats', getStats);
   router.get('/health', getHealth);
   router.post('/key-requests', postKeyRequest);

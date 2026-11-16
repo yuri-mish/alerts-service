@@ -60,7 +60,9 @@ export const resendContactMessages = async (db: Db, send: (text: string) => Prom
  * Якщо Telegram недоступний - повідомлення лишається в базі з telegram_error, щоб не загубилось.
  */
 export const submitContactMessage = async (
-  db: Db, telegram: Telegram | null, contactMessage: ContactMessage,
+  db: Db,
+  telegram: Telegram | null,
+  contactMessage: ContactMessage,
 ): Promise<number> => {
   const inserted = await db.query<{ id: number }>(
     'insert into contact_messages (name, contact, message) values ($1, $2, $3) returning id',

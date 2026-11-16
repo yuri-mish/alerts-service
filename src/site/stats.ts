@@ -55,7 +55,11 @@ const queryStats = async (db: Db): Promise<PublicStats> => {
   const result = await db.query(sql, [config.timeZone, DAYS]);
   const first = result.rows[0];
   const regions = result.rows.map((row) => ({
-    uid: row.uid, title: row.title, hours: row.hours, red_hours: row.red_hours, alerts: row.alerts,
+    uid: row.uid,
+    title: row.title,
+    hours: row.hours,
+    red_hours: row.red_hours,
+    alerts: row.alerts,
   }));
   return {
     from: first?.from_day ?? '',
@@ -73,7 +77,9 @@ export const createPublicStats = (db: Db) => {
     if (!cached || now - cached.at > CACHE_MS) {
       const value = queryStats(db);
       cached = { at: now, value };
-      value.catch(() => { cached = null; }); // помилку не кешуємо
+      value.catch(() => {
+        cached = null;
+      }); // помилку не кешуємо
     }
     return cached.value;
   };

@@ -1,0 +1,6 @@
+node_modules/
+package-lock.json
+# HTML лендінгу/адмінки і документація форматуються вручну
+*.html
+*.md
+migrations/

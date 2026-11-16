@@ -99,10 +99,7 @@ export const monthField = z
   .transform((month) => `${month}-01`);
 
 /** Невід'ємне ціле */
-export const intField = z
-  .string()
-  .regex(/^\d+$/, 'must be an integer')
-  .transform(Number);
+export const intField = z.string().regex(/^\d+$/, 'must be an integer').transform(Number);
 
 /** Список цілих через кому: `14,31` -> [14, 31] (без повторів, не більше 200) */
 export const intListField = z
@@ -124,6 +121,7 @@ export const parseBody = <Schema extends z.ZodType>(schema: Schema, req: Request
   validate(schema, req.body ?? {});
 
 /** Київський час у форматі ISO без зони: 2026-11-10T12:00:00 (null лишається null) */
-export const LOCAL_ISO = (col: string) => `to_char(${col} at time zone '${config.timeZone}', 'YYYY-MM-DD"T"HH24:MI:SS')`;
+export const LOCAL_ISO = (col: string) =>
+  `to_char(${col} at time zone '${config.timeZone}', 'YYYY-MM-DD"T"HH24:MI:SS')`;
 /** Той самий час з пробілом замість T - для людей і Excel: 2026-11-10 12:00:00 */
 export const LOCAL = (col: string) => `to_char(${col} at time zone '${config.timeZone}', 'YYYY-MM-DD HH24:MI:SS')`;

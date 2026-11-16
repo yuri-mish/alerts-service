@@ -2,13 +2,30 @@
 import express, { type Request, type Response, type Router } from 'express';
 import { z } from 'zod';
 import {
-  HttpError, idParam, intField, intListField, levelField, LOCAL, LOCAL_ISO, monthField, parseQuery, sendCsv, type Deps,
+  HttpError,
+  idParam,
+  intField,
+  intListField,
+  levelField,
+  LOCAL,
+  LOCAL_ISO,
+  monthField,
+  parseQuery,
+  sendCsv,
+  type Deps,
 } from '../common.ts';
 
 // --- параметри запитів ---
 
-const periodsQuery = z
-  .object({
+/** Хоча б одна територія: без region і location запит тягнув би всю країну (вимога користувача, 16.11.2026) */
+const hasTerritory = (q: { region?: number[]; location?: number[] }) => Boolean(q.region || q.location);
+const TERRITORY_REQUIRED = 'specify region or location (at least one)';
+
+// Схеми рядка запиту - суворі (z.strictObject): невідомий параметр (опечатка `levle=`, непідтримуваний фільтр) -> 400,
+// а не мовчки ігнорується (вимога користувача, 16.11.2026).
+
+export const periodsQuery = z
+  .strictObject({
     month: monthField.optional(),
     region: intListField.optional(),
     location: intListField.optional(),
@@ -16,21 +33,26 @@ const periodsQuery = z
     limit: intField.optional(),
     format: z.string().optional(),
   })
-  .refine((q) => q.month || q.region || q.location, 'specify at least month, region or location');
+  .refine(hasTerritory, TERRITORY_REQUIRED);
 
-const oneCQuery = z.object({
-  month: monthField,
-  region: intListField.optional(),
-  location: intListField.optional(),
-  format: z.string().optional(),
-});
+export const oneCQuery = z
+  .strictObject({
+    month: monthField,
+    region: intListField.optional(),
+    location: intListField.optional(),
+    level: levelField.optional(),
+    format: z.string().optional(),
+  })
+  .refine(hasTerritory, TERRITORY_REQUIRED);
 
-const summaryQuery = z.object({
-  month: monthField,
-  region: intListField.optional(),
-  location: intListField.optional(),
-  by: z.string().optional(),
-});
+export const summaryQuery = z
+  .strictObject({
+    month: monthField,
+    region: intListField.optional(),
+    location: intListField.optional(),
+    by: z.string().optional(),
+  })
+  .refine(hasTerritory, TERRITORY_REQUIRED);
 
 /** 'YYYY-MM-01' -> 'YYYY-MM' для імені CSV-файлу */
 const monthLabel = (firstDay: string | undefined): string => firstDay?.slice(0, 7) ?? 'all';
@@ -64,23 +86,31 @@ export const createDataRouter = ({ db, requireClientKey }: Deps): Router => {
   /**
    * Вигрузка для 1С: тривога розрізана по київських добах, один рядок на добу.
    * Початок/кінець шматка, що перетнув опівніч, - 00:00:00 відповідної доби (кінець попередньої = 00:00:00 наступної).
+   * НомерТревоги рахується по всіх тривогах території й доби, а фільтр level накладається після нумерації:
+   * інакше окремі вигрузки жовтих і червоних дали б два «№1» в одній добі (конфлікт ключа в 1С).
    */
   const getOneCAlerts = async (req: Request, res: Response) => {
     const q = parseQuery(oneCQuery, req);
     const r = await db.query(
-      `select to_char(ap.month, 'YYYY-MM-DD"T"HH24:MI:SS') as "ПериодМесяц",
-              extract(day from ap.day)::int as "ДеньМесяца",
-              ap.location_uid as "КодТеритории",
+      `with numbered as (
+         select ap.*,
+                (row_number() over (partition by ap.location_uid, ap.day order by ap.started_at, ap.alert_id))::int as alert_no
+           from alert_periods ap
+          where ap.month = $1
+            and ($2::int[] is null or ap.region_uid = any($2))
+            and ($3::int[] is null or ap.location_uid = any($3))
+       )
+       select to_char(n.month, 'YYYY-MM-DD"T"HH24:MI:SS') as "ПериодМесяц",
+              extract(day from n.day)::int as "ДеньМесяца",
+              n.location_uid as "КодТеритории",
               'Тревога' as "ТипСобытия",
-              (row_number() over (partition by ap.location_uid, ap.day order by ap.started_at, ap.alert_id))::int as "НомерТревоги",
-              ${LOCAL_ISO('ap.started_at')} as "Начало",
-              ${LOCAL_ISO('ap.finished_at')} as "Конец"
-         from alert_periods ap
-        where ap.month = $1
-          and ($2::int[] is null or ap.region_uid = any($2))
-          and ($3::int[] is null or ap.location_uid = any($3))
-        order by date_trunc('second', ap.started_at), ap.location_uid, ap.alert_id`,
-      [q.month, q.region ?? null, q.location ?? null],
+              n.alert_no as "НомерТревоги",
+              ${LOCAL_ISO('n.started_at')} as "Начало",
+              ${LOCAL_ISO('n.finished_at')} as "Конец"
+         from numbered n
+        where ($4::text is null or n.level = $4)
+        order by date_trunc('second', n.started_at), n.location_uid, n.alert_id`,
+      [q.month, q.region ?? null, q.location ?? null, q.level ?? null],
     );
     if (q.format === 'csv') return sendCsv(res, `alerts-1c-${monthLabel(q.month)}.csv`, r.rows);
     res.json(r.rows);
@@ -119,10 +149,10 @@ export const createDataRouter = ({ db, requireClientKey }: Deps): Router => {
     res.json({ ...alert, periods });
   };
 
-  const router = express.Router();
-  router.get('/periods',    requireClientKey, getPeriods);
-  router.get('/summary',    requireClientKey, getSummary);
-  router.get('/1c/alerts',  requireClientKey, getOneCAlerts);
-  router.get('/alerts/:id', requireClientKey, getAlert);
-  return router;
+  // prettier-ignore
+  return express.Router()
+    .get('/periods',    requireClientKey, getPeriods)
+    .get('/summary',    requireClientKey, getSummary)
+    .get('/1c/alerts',  requireClientKey, getOneCAlerts)
+    .get('/alerts/:id', requireClientKey, getAlert);
 };

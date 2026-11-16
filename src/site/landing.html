@@ -10,7 +10,7 @@
 </script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>API повітряних тривог</title>
+<title>API історії повітряних тривог</title>
 <meta name="description" content="Архів повітряних тривог по областях, районах і громадах України: початок, кінець і тривалість, червоний і жовтий рівні, години за місяць, вигрузка для 1С. Безкоштовний API.">
 <meta name="robots" content="index, follow">
 <meta name="google-site-verification" content="YKrMOj68EH1wi_msz7xEnW3MZO4mRYrp4dIUSqM4HZQ">
@@ -26,7 +26,7 @@
 <meta property="og:locale" content="uk_UA">
 <meta property="og:site_name" content="alerts.starsam.net">
 <meta property="og:url" content="https://alerts.starsam.net/">
-<meta property="og:title" content="API повітряних тривог: готова інтеграція з 1С">
+<meta property="og:title" content="API історії повітряних тривог: готова інтеграція з 1С">
 <meta property="og:description" content="Архів повітряних тривог по областях, районах і громадах України: JSON і CSV для будь-якої системи та готова вигрузка для 1С.">
 <meta name="twitter:card" content="summary">
 
@@ -46,7 +46,7 @@
       "name": "API історії повітряних тривог в Україні",
       "url": "https://alerts.starsam.net/",
       "description": "HTTP API з архівом повітряних тривог по областях, районах і громадах України: відрізки тривог по добах, підсумки годин за місяць з урахуванням перекриттів, вигрузка для 1С.",
-      "documentation": "https://alerts.starsam.net/",
+      "documentation": "https://alerts.starsam.net/docs",
       "inLanguage": "uk",
       "isAccessibleForFree": true,
       "areaServed": { "@type": "Country", "name": "Україна" }
@@ -174,6 +174,19 @@
   .btn:hover { filter: brightness(1.08); }
   .btn.secondary { background: transparent; color: var(--accent); }
   .btn:disabled { opacity: .6; cursor: wait; }
+  a.btn { display: inline-block; text-decoration: none; }
+  /* окреме посилання на інтерактивну документацію (Swagger UI) */
+  .docs-link { display: flex; align-items: center; gap: 16px; margin: 16px 0 24px; padding: 18px 20px;
+               border: 1px solid var(--accent); border-radius: 12px; background: var(--accent-soft);
+               color: var(--text); text-decoration: none; }
+  .docs-link:hover { filter: brightness(1.03); box-shadow: 0 2px 10px rgba(0, 0, 0, .08); }
+  .docs-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .docs-link .docs-icon { flex: none; width: 44px; height: 44px; border-radius: 10px; background: var(--accent);
+                          color: #fff; display: grid; place-items: center; font: 600 1rem var(--font-mono); }
+  .docs-link .docs-text { flex: 1; min-width: 0; }
+  .docs-link b { display: block; font-size: 1.1rem; color: var(--accent); }
+  .docs-link span { color: var(--muted); font-size: .93rem; }
+  .docs-link .docs-arrow { flex: none; font-size: 1.4rem; color: var(--accent); }
   .cta { margin: 24px 0 0; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
   dialog { border: 1px solid var(--border); border-radius: 14px; padding: 0; width: min(480px, calc(100vw - 32px));
            background: var(--surface); color: var(--text); }
@@ -273,6 +286,7 @@
 
   <div class="cta">
     <button class="btn" type="button" data-open-request>Отримати ключ</button>
+    <a class="btn secondary" href="/docs">Документація API</a>
     <button class="btn secondary" type="button" data-open-contact>Написати автору</button>
     <a href="#commands">Команди API ↓</a>
   </div>
@@ -319,13 +333,22 @@
     <li><b>Території:</b> <code>region</code> — область (UID регіону), <code>location</code> — конкретна територія
       (сама область, район, громада або місто). В одній області тривоги району й громади можуть перекриватися.</li>
     <li><b>Час</b> у полях <code>*_local</code> і у вигрузці для 1С — київський; <code>started_at</code> / <code>finished_at</code> — UTC.</li>
-    <li><b>Тривога, що ще триває,</b> має порожній кінець.</li>
+    <li><b>Тривога, що ще триває,</b> має порожній кінець. Це стан на момент нічного оновлення — бонус до історії;
+      для стану тривог у реальному часі сервіс не призначений.</li>
     <li><b>Глибина архіву:</b> з листопада 2026 року.</li>
   </ul>
 </section>
 
 <section id="commands">
   <h2>Команди</h2>
+  <a class="docs-link" href="/docs">
+    <span class="docs-icon" aria-hidden="true">{ }</span>
+    <span class="docs-text">
+      <b>Документація API</b>
+      <span>Усі параметри й поля відповідей (OpenAPI). Вставте свій ключ і спробуйте запит просто в браузері.</span>
+    </span>
+    <span class="docs-arrow" aria-hidden="true">→</span>
+  </a>
 
   <!-- 1. periods -->
   <div class="card">
@@ -341,7 +364,7 @@
       <tr><td><code>format</code></td><td><code>csv</code> — файл для Excel (роздільник <code>;</code>, UTF-8 з BOM)</td></tr>
       <tr><td><code>limit</code></td><td>Максимум рядків (за замовчуванням 50 000)</td></tr>
     </table></div>
-    <p style="margin-top:8px">Потрібен хоча б один із фільтрів <code>month</code>, <code>region</code>, <code>location</code>.
+    <p style="margin-top:8px">Обов’язково вкажіть хоча б одну територію: <code>region</code> або <code>location</code>; <code>month</code> — за бажанням.
       Сортування — за початком, далі за територією.</p>
 
     <div class="tabs" role="tablist" data-group="periods">
@@ -445,20 +468,21 @@ console.log(`${total.alerts} тривог, ${total.hours} год`);</code></pre>
       <tr><td><code>month</code></td><td><b>Обов'язковий.</b> Місяць <code>YYYY-MM</code></td></tr>
       <tr><td><code>region</code></td><td>UID регіону або список через кому</td></tr>
       <tr><td><code>location</code></td><td>UID території або список через кому</td></tr>
+      <tr><td><code>level</code></td><td><code>red</code> або <code>yellow</code> — лише тривоги цього рівня
+        (<code>НомерТревоги</code> лишається як серед усіх тривог доби)</td></tr>
       <tr><td><code>format</code></td><td><code>csv</code> — файл замість JSON</td></tr>
     </table></div>
+    <p>Потрібен хоча б один із <code>region</code>, <code>location</code>. Невідомий параметр (наприклад, опечатка) — помилка <code>400</code>.</p>
 
     <div class="tabs" role="tablist" data-group="onec">
       <button class="tab" role="tab" aria-selected="true" data-tab="1c">1С</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="curl">curl</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="csv">CSV</button>
     </div>
-    <div class="panel" data-group="onec" data-tab="1c"><pre><code>Функция ЗагрузитьТревоги(Месяц, КлючAPI, Территории = "") Экспорт
+    <div class="panel" data-group="onec" data-tab="1c"><pre><code>Функция ЗагрузитьТревоги(Месяц, КлючAPI, Территории) Экспорт
 
-	Адрес = "/1c/alerts?month=" + Формат(Месяц, "ДФ=yyyy-MM");
-	Если ЗначениеЗаполнено(Территории) Тогда
-		Адрес = Адрес + "&amp;location=" + Территории; // например "75,76"
-	КонецЕсли;
+	// Территории обязательны: коды через запятую, например "75,76"
+	Адрес = "/1c/alerts?month=" + Формат(Месяц, "ДФ=yyyy-MM") + "&amp;location=" + Территории;
 
 	Соединение = Новый HTTPСоединение("alerts.starsam.net", 443, , , , 60, Новый ЗащищенноеСоединениеOpenSSL);
 	Заголовки = Новый Соответствие;
@@ -559,7 +583,7 @@ console.log(`${total.alerts} тривог, ${total.hours} год`);</code></pre>
   <p>Тіло помилки — <code>{"error": "опис"}</code>.</p>
   <div class="table-wrap"><table>
     <tr><th>Код</th><th>Причина</th></tr>
-    <tr><td><code>400</code></td><td>Невірний параметр: місяць не у форматі <code>YYYY-MM</code>, UID не число, немає жодного фільтра</td></tr>
+    <tr><td><code>400</code></td><td>Невірний параметр: місяць не у форматі <code>YYYY-MM</code>, UID не число, не вказано ні <code>region</code>, ні <code>location</code>, невідомий параметр</td></tr>
     <tr><td><code>401</code></td><td>Немає ключа, ключ невідомий або вимкнений</td></tr>
     <tr><td><code>403</code></td><td>Ключ не дає доступу до цієї команди</td></tr>
     <tr><td><code>404</code></td><td>Немає такої команди</td></tr>

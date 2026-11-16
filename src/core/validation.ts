@@ -5,19 +5,17 @@ import { z } from 'zod';
 export class ValidationError extends Error {}
 
 /** Обов'язковий текст: обрізаються пробіли, порожній -> "required", довший за max -> "too long" */
-export const requiredText = (max: number) => z
-  .string({ error: 'required' })
-  .trim()
-  .min(1, 'required')
-  .max(max, `too long (max ${max})`);
+export const requiredText = (max: number) =>
+  z.string({ error: 'required' }).trim().min(1, 'required').max(max, `too long (max ${max})`);
 
 /** Необов'язковий текст: відсутній, null або порожній -> null */
-export const optionalText = (max: number) => z
-  .string()
-  .trim()
-  .max(max, `too long (max ${max})`)
-  .nullish()
-  .transform((value) => value || null);
+export const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max, `too long (max ${max})`)
+    .nullish()
+    .transform((value) => value || null);
 
 /** Приховане поле-пастка `website` у формах лендінгу: людина його не бачить, бот заповнює */
 export const isBotSubmission = (body: unknown): boolean => {

@@ -38,11 +38,9 @@ const catchUpOnStartup = async (db: Db, fetcher: Fetcher): Promise<void> => {
 };
 
 /** Запускає розклад; повертає функцію зупинки */
-export const startScheduler = (db: Db, fetcher: Fetcher, syncTime: string): () => void => {
-  const job = new Cron(
-    dailyCron(syncTime),
-    { name: 'daily-sync', timezone: config.timeZone, protect: true },
-    () => runSync(db, fetcher, 'schedule'),
+export const startScheduler = (db: Db, fetcher: Fetcher, syncTime: string): (() => void) => {
+  const job = new Cron(dailyCron(syncTime), { name: 'daily-sync', timezone: config.timeZone, protect: true }, () =>
+    runSync(db, fetcher, 'schedule'),
   );
   log.info('scheduler started', { syncTime, timeZone: config.timeZone, nextRun: job.nextRun()?.toISOString() });
   catchUpOnStartup(db, fetcher).catch((e) => log.error('startup sync failed', { error: (e as Error).message }));

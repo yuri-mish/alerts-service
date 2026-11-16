@@ -13,8 +13,8 @@ import { resendContactMessages } from './contact.ts';
 
 export type Send = (text: string) => Promise<void>;
 
-const STALE_AFTER_H = 26;      // щоденні задачі: доба + запас
-const REMIND_EVERY_H = 12;     // нагадування, поки проблема триває
+const STALE_AFTER_H = 26; // щоденні задачі: доба + запас
+const REMIND_EVERY_H = 12; // нагадування, поки проблема триває
 const CHECK_EVERY_MS = 30 * 60_000; // раз на 30 хв (вимога користувача)
 const HOUR_MS = 3_600_000;
 
@@ -91,7 +91,9 @@ export const createMonitor = (db: Db, send: Send, opts: MonitorOptions) => {
   /** Нові завершені прогони з проблемами (старі, що були до запуску сервісу, не повідомляємо) */
   const checkRuns = async () => {
     if (lastReportedRunId === null) {
-      const max = await db.query<{ id: number | null }>('select max(id) as id from sync_runs where finished_at is not null');
+      const max = await db.query<{ id: number | null }>(
+        'select max(id) as id from sync_runs where finished_at is not null',
+      );
       lastReportedRunId = max.rows[0].id ?? 0;
       return;
     }
@@ -115,13 +117,17 @@ export const createMonitor = (db: Db, send: Send, opts: MonitorOptions) => {
     const last = result.rows[0];
     const current = now();
     if (last && current.getTime() - last.finished_at.getTime() <= staleMs) {
-      await syncIncident.resolved(`✅ Оновлення даних знову працює (прогін №${last.id}, ${formatTime(last.finished_at)})`);
+      await syncIncident.resolved(
+        `✅ Оновлення даних знову працює (прогін №${last.id}, ${formatTime(last.finished_at)})`,
+      );
       return;
     }
-    const when = last ? `останнє — ${formatTime(last.finished_at)}, ${ageHours(last.finished_at, current)} год тому` : 'ще не було жодного';
+    const when = last
+      ? `останнє — ${formatTime(last.finished_at)}, ${ageHours(last.finished_at, current)} год тому`
+      : 'ще не було жодного';
     await syncIncident.problem(
       `❌ Немає вдалого оновлення даних понад ${STALE_AFTER_H} год (${when}).\n` +
-      'API віддає лише ~30 днів: якщо не виправити, дані за цей період буде втрачено.',
+        'API віддає лише ~30 днів: якщо не виправити, дані за цей період буде втрачено.',
       current,
     );
   };
@@ -140,7 +146,9 @@ export const createMonitor = (db: Db, send: Send, opts: MonitorOptions) => {
       await backupIncident.resolved(`✅ Бекап бази знову є: ${newest.name}`);
       return;
     }
-    const when = newest ? `останній — ${newest.name}, ${ageHours(newest.time, current)} год тому` : 'файлів бекапу не знайдено';
+    const when = newest
+      ? `останній — ${newest.name}, ${ageHours(newest.time, current)} год тому`
+      : 'файлів бекапу не знайдено';
     await backupIncident.problem(
       `❌ Бекап бази не робився понад ${STALE_AFTER_H} год (${when}).\nПеревірте cron і ~/backups/alerts/backup.log`,
       current,

@@ -3,10 +3,10 @@ import { ApiError, type ApiAlert, type Fetcher } from './alerts-api.ts';
 import { log } from '../core/log.ts';
 import { config } from '../core/config.ts';
 
-const STALE_AFTER_H = 72;      // тривога "висить" довше (3 доби) - закриваємо
+const STALE_AFTER_H = 72; // тривога "висить" довше (3 доби) - закриваємо
 const STALE_DURATION_MIN = 30; // ... тривалістю 30 хв
-const GAP_WARN_DAYS = 25;      // API віддає ~30 днів; довша перерва = можлива дірка
-const LOCK_KEY = 7_310_031;    // pg advisory lock: один прогін одночасно
+const GAP_WARN_DAYS = 25; // API віддає ~30 днів; довша перерва = можлива дірка
+const LOCK_KEY = 7_310_031; // pg advisory lock: один прогін одночасно
 // У звіти (alert_periods) йдуть лише повітряні тривоги; інші типи (artillery_shelling, urban_fights, ...)
 // зберігаються в alerts, але не рахуються (вимога користувача, 14.11.2026)
 const REPORT_ALERT_TYPE = 'air_raid';
@@ -50,7 +50,8 @@ const insertFresh = async (c: Client, regionUid: number, fresh: ApiAlert[], now:
          as f(id, location_uid, location_title, location_type, alert_type, level,
               started_at, finished_at, closed_by, api_updated_at)`,
     [
-      regionUid, now,
+      regionUid,
+      now,
       fresh.map((a) => a.id),
       fresh.map((a) => a.locationUid),
       fresh.map((a) => a.locationTitle),
@@ -81,8 +82,11 @@ const applyExisting = async (c: Client, a: ApiAlert, cur: CurrentAlert, now: Dat
   // Рівень: зміни не відстежуємо, зберігаємо останній відомий
   const newLevel = a.level ?? cur.level;
 
-  const changed = t(cur.finished_at) !== t(finishedAt) || cur.closed_by !== closedBy
-    || newLevel !== cur.level || cur.location_title !== a.locationTitle;
+  const changed =
+    t(cur.finished_at) !== t(finishedAt) ||
+    cur.closed_by !== closedBy ||
+    newLevel !== cur.level ||
+    cur.location_title !== a.locationTitle;
   const rowChanged = changed || t(cur.api_updated_at) !== t(a.updatedAt);
 
   if (rowChanged) {
@@ -107,7 +111,10 @@ export const applyAlerts = async (
 
   // той самий id двічі у відповіді не повинен ламати пакетну вставку - лишається останній
   const unique = [...new Map(alerts.map((a) => [a.id, a])).values()];
-  const current = await loadCurrent(c, unique.map((a) => a.id));
+  const current = await loadCurrent(
+    c,
+    unique.map((a) => a.id),
+  );
 
   const fresh: ApiAlert[] = [];
   const onlySeenIds: number[] = []; // нічого не змінилось - достатньо оновити last_seen_at
@@ -137,12 +144,14 @@ export const applyAlerts = async (
 
 /** Тривоги без кінця довше STALE_AFTER_H (3 доби) закриваються як початок + 30 хв. */
 export const closeStale = async (c: Client, now: Date, touched: Set<number>): Promise<number> => {
-  const ids = (await c.query<{ id: number }>(
-    `update alerts set finished_at = started_at + make_interval(mins => $2), closed_by = 'stale_30min'
+  const ids = (
+    await c.query<{ id: number }>(
+      `update alerts set finished_at = started_at + make_interval(mins => $2), closed_by = 'stale_30min'
       where finished_at is null and started_at < $1::timestamptz - make_interval(hours => $3)
       returning id`,
-    [now, STALE_DURATION_MIN, STALE_AFTER_H],
-  )).rows.map((r) => r.id);
+      [now, STALE_DURATION_MIN, STALE_AFTER_H],
+    )
+  ).rows.map((r) => r.id);
   ids.forEach((id) => touched.add(id));
   return ids.length;
 };
@@ -203,7 +212,6 @@ export const rebuildPeriods = async (c: Client, ids: number[]): Promise<void> =>
   await c.query(sql, [ids, config.timeZone, REPORT_ALERT_TYPE]);
 };
 
-
 export type RegionResult = ApplyStats & { region: number; warning?: string; error?: string };
 export type RunResult = { runId: number; status: string; regions: RegionResult[]; staleClosed: number };
 
@@ -213,7 +221,12 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Сам прогін: регіони -> БД, закриття завислих, підсумок у sync_runs. Наприкінці знімає advisory lock. */
 const runSync = async (
-  db: Db, fetcher: Fetcher, runId: number, lockClient: Client, pauseMs: number, now: () => Date,
+  db: Db,
+  fetcher: Fetcher,
+  runId: number,
+  lockClient: Client,
+  pauseMs: number,
+  now: () => Date,
 ): Promise<RunResult> => {
   const results: RegionResult[] = [];
   let staleClosed = 0;
@@ -225,16 +238,22 @@ const runSync = async (
       if (i > 0) await sleep(pauseMs);
       const r: RegionResult = { region: uid, fetched: 0, inserted: 0, updated: 0 };
       try {
-        const prev = (await db.query<{ last: Date | null }>(
-          'select max(last_seen_at) as last from alerts where region_uid = $1', [uid])).rows[0].last;
+        const prev = (
+          await db.query<{ last: Date | null }>('select max(last_seen_at) as last from alerts where region_uid = $1', [
+            uid,
+          ])
+        ).rows[0].last;
         const alerts = await fetcher(uid);
         const ts = now();
-        Object.assign(r, await tx(db, async (c) => {
-          const touched = new Set<number>();
-          const s = await applyAlerts(c, uid, alerts, ts, touched);
-          await rebuildPeriods(c, [...touched]);
-          return s;
-        }));
+        Object.assign(
+          r,
+          await tx(db, async (c) => {
+            const touched = new Set<number>();
+            const s = await applyAlerts(c, uid, alerts, ts, touched);
+            await rebuildPeriods(c, [...touched]);
+            return s;
+          }),
+        );
         if (prev && ts.getTime() - prev.getTime() > GAP_WARN_DAYS * 86_400_000) {
           r.warning = `previous sync ${prev.toISOString()} - possible gap in data`;
         }
@@ -255,17 +274,22 @@ const runSync = async (
     });
     const failed = results.filter((r) => r.error).length;
     const status = failed === 0 ? 'ok' : failed === results.length ? 'error' : 'partial';
-    await db.query(
-      `update sync_runs set finished_at = now(), status = $2, details = $3, error = $4 where id = $1`,
-      [runId, status, JSON.stringify({ regions: results, staleClosed }), fatal],
-    );
+    await db.query(`update sync_runs set finished_at = now(), status = $2, details = $3, error = $4 where id = $1`, [
+      runId,
+      status,
+      JSON.stringify({ regions: results, staleClosed }),
+      fatal,
+    ]);
     return { runId, status, regions: results, staleClosed };
   } catch (e) {
     const msg = (e as Error).message;
-    await db.query(
-      `update sync_runs set finished_at = now(), status = 'error', details = $2, error = $3 where id = $1`,
-      [runId, JSON.stringify({ regions: results }), msg],
-    ).catch(() => {});
+    await db
+      .query(`update sync_runs set finished_at = now(), status = 'error', details = $2, error = $3 where id = $1`, [
+        runId,
+        JSON.stringify({ regions: results }),
+        msg,
+      ])
+      .catch(() => {});
     log.error('sync failed', { runId, error: msg });
     return { runId, status: 'error', regions: results, staleClosed };
   } finally {

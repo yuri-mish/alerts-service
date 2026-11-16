@@ -63,7 +63,9 @@ export const createKey = async (db: Db, name: string, key?: string): Promise<Api
 
 /** Змінює назву та/або вмикає/вимикає ключ. null - ключа з таким id немає. */
 export const updateKey = async (
-  db: Db, id: number, changes: { name: string | null; enabled: boolean | null },
+  db: Db,
+  id: number,
+  changes: { name: string | null; enabled: boolean | null },
 ): Promise<ApiKeyInfo | null> => {
   const result = await db.query<ApiKeyInfo>(
     `update api_keys

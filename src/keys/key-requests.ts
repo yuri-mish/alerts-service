@@ -54,10 +54,12 @@ const formatRequest = (request: StoredRequest): string => {
   return lines.join('\n');
 };
 
-const decisionButtons = (id: number) => [[
-  { text: '✅ Прийняти', callback_data: `approve:${id}` },
-  { text: '❌ Відмовити', callback_data: `reject:${id}` },
-]];
+const decisionButtons = (id: number) => [
+  [
+    { text: '✅ Прийняти', callback_data: `approve:${id}` },
+    { text: '❌ Відмовити', callback_data: `reject:${id}` },
+  ],
+];
 
 const approvalLetter = (request: StoredRequest, key: string): string => {
   const lines = [
@@ -112,8 +114,15 @@ export const submitKeyRequest = async (db: Db, telegram: Telegram | null, reques
     return stored.id;
   }
   try {
-    const messageId = await telegram.api.sendMessage(telegram.chatId, formatRequest(stored), decisionButtons(stored.id));
-    await db.query('update key_requests set telegram_sent = true, telegram_message_id = $2 where id = $1', [stored.id, messageId]);
+    const messageId = await telegram.api.sendMessage(
+      telegram.chatId,
+      formatRequest(stored),
+      decisionButtons(stored.id),
+    );
+    await db.query('update key_requests set telegram_sent = true, telegram_message_id = $2 where id = $1', [
+      stored.id,
+      messageId,
+    ]);
   } catch (e) {
     const error = (e as Error).message;
     log.error('key request telegram failed', { id: stored.id, error });
@@ -167,7 +176,11 @@ export type Decision = {
  * Повідомлення із заявкою в Telegram оновлюється (кнопки зникають); помилка Telegram рішення не скасовує.
  */
 export const decideKeyRequest = async (
-  db: Db, telegram: Telegram | null, id: number, action: Action, source: 'telegram' | 'admin',
+  db: Db,
+  telegram: Telegram | null,
+  id: number,
+  action: Action,
+  source: 'telegram' | 'admin',
 ): Promise<Decision | null> => {
   const status = action === 'approve' ? 'approved' : 'rejected';
   const request = await claimRequest(db, id, status);

@@ -13,21 +13,40 @@
     "sync": "node src/sync-once.ts",
     "rebuild": "node src/rebuild-periods.ts",
     "typecheck": "tsc",
-    "test": "node --test test/*.test.ts",
+    "test": "node --test --test-concurrency=1 test/*.test.ts",
     "deploy": "bash deploy.sh",
-    "deploy:fast": "bash deploy.sh --no-test"
+    "deploy:fast": "bash deploy.sh --no-test",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "tsc && eslint . && prettier --check .",
+    "test:unit": "node --test test/unit.test.ts"
   },
   "dependencies": {
+    "compression": "^1.8.2",
     "croner": "^11.0.1",
     "express": "^5.3.0",
     "helmet": "^8.3.0",
     "pg": "^8.13.1",
+    "swagger-ui-dist": "^5.35.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/compression": "^1.8.1",
     "@types/express": "^5.0.6",
     "@types/node": "^24.0.0",
     "@types/pg": "^8.11.10",
-    "typescript": "^5.8.3"
+    "eslint": "^10.15.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.10.1",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.72.2"
+  },
+  "allowScripts": {
+    "@scarf/scarf": false
+  },
+  "scarfSettings": {
+    "enabled": false
   }
 }

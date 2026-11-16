@@ -28,7 +28,7 @@ export const createTelegramApi = (botToken: string): TelegramApi => {
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
-    const body = await response.json() as { ok: boolean; result?: unknown; description?: string };
+    const body = (await response.json()) as { ok: boolean; result?: unknown; description?: string };
     if (!body.ok) throw new Error(`Telegram ${method} ${response.status}: ${body.description ?? 'unknown error'}`);
     return body.result;
   };
@@ -41,7 +41,7 @@ export const createTelegramApi = (botToken: string): TelegramApi => {
         disable_web_page_preview: true,
         reply_markup: buttons ? { inline_keyboard: buttons } : undefined,
       };
-      const message = await call('sendMessage', payload) as { message_id: number };
+      const message = (await call('sendMessage', payload)) as { message_id: number };
       return message.message_id;
     },
     editMessage: async (chatId, messageId, text) => {
@@ -75,7 +75,11 @@ const WEBHOOK_RETRY_DELAYS_MS = [1, 2, 5, 10, 30].map((minutes) => minutes * 60_
  * Повертає true, якщо вдалося з першої спроби.
  */
 export const registerWebhook = async (
-  api: TelegramApi, url: string, secret: string, delaysMs = WEBHOOK_RETRY_DELAYS_MS, attempt = 0,
+  api: TelegramApi,
+  url: string,
+  secret: string,
+  delaysMs = WEBHOOK_RETRY_DELAYS_MS,
+  attempt = 0,
 ): Promise<boolean> => {
   try {
     await api.setWebhook(url, secret);
@@ -83,7 +87,10 @@ export const registerWebhook = async (
     return true;
   } catch (e) {
     const delay = delaysMs[Math.min(attempt, delaysMs.length - 1)];
-    log.error('telegram webhook failed, will retry', { error: (e as Error).message, retryInSec: Math.round(delay / 1000) });
+    log.error('telegram webhook failed, will retry', {
+      error: (e as Error).message,
+      retryInSec: Math.round(delay / 1000),
+    });
     const retry = () => void registerWebhook(api, url, secret, delaysMs, attempt + 1);
     setTimeout(retry, delay).unref();
     return false;

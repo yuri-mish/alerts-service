@@ -19,7 +19,13 @@ const telegram = await setupTelegram({
   chatId: config.telegramChatId,
   publicUrl: config.publicUrl,
 });
-const server = createServer({ db, fetcher, adminKey: config.apiKey, rateLimitPerMin: config.rateLimitPerMin, telegram });
+const server = createServer({
+  db,
+  fetcher,
+  adminKey: config.apiKey,
+  rateLimitPerMin: config.rateLimitPerMin,
+  telegram,
+});
 server.listen(config.port, config.host, () => {
   log.info('listening', { host: config.host, port: config.port, syncTime: config.syncTime, timeZone: config.timeZone });
 });

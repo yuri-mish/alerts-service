@@ -14,6 +14,8 @@
   Регіон 31 — лише сам м. Київ; у 9 (Дніпропетровська), 22 (Харківська), 15, 12 окрім районів є громади (`hromada`)
   і міста (`city`) — перекриваються з районами (`alerts` у `/summary` рахує їх усі, години — з об'єднанням перекриттів).
   **Це фіча, не баг** (користувач, 15.11.2026): не «виправляти» і не пропонувати пояснення чи фільтри.
+- Назва — **«API історії повітряних тривог»** (16.11.2026): упор на **історію**; тривоги, що ще тривають (стан на нічне
+  оновлення, кінець null), — лише бонус, реальний час не обіцяємо. Так у title лендінгу/docs, OG, OpenAPI.
 - Лендінг: сервіс **для всіх систем, 1С — пріоритет** (вимога користувача, 15.11.2026): «Історія повітряних тривог
   для ваших систем»; у шапці — макет вікна обробки 1С **українською** (назви, кнопки, колонки-синоніми реквізитів;
   у підписі — справжні імена реквізитів JSON) зі **справжніми** рядками `/1c/alerts` (Бучанський район, 12.11.2026, формат дат 1С)
@@ -47,7 +49,12 @@
   не потрапляють — фільтр `REPORT_ALERT_TYPE` у `rebuildPeriods`.
 - У відповіді API є підрегіони (райони, громади, напр. `location_uid: "94"` — рядок!) — зберігаються як `location_uid`;
   `region_uid` = регіон, за яким робили запит. `oblast_uid` не зберігаємо (прибрано за запитом).
-- Фільтри `/periods` і `/summary`: `region`, `location` — одне значення або список через кому.
+- Фільтри `/periods`, `/summary`, `/1c/alerts`: `region`, `location` — одне значення або список через кому.
+  **Хоча б одна територія (`region` або `location`) обов’язкова** в усіх трьох (вимога користувача, 16.11.2026;
+  `hasTerritory` у `handlers/data.ts`, інакше 400 `specify region or location (at least one)`); `month` у `/periods` — необов’язковий.
+  Схеми рядка запиту — `z.strictObject`: **невідомий параметр → 400** (`Unrecognized key`). `/1c/alerts` має `level`
+  (16.11.2026); `НомерТревоги` рахується по всіх тривогах доби **до** фільтра level (інакше два «№1» в одній добі).
+  Тіла запитів не суворі — форми шлють поле-пастку `website`.
 - Раз на добу (03:30 Київ, `SYNC_TIME`) бере дані за місяць і актуалізує БД. **Опитування активних тривог НЕ треба** (користувач відмовився).
 - Таблиця для звітів `alert_periods`: регіон, рівень (жовтий/червоний), доба (`day`), місяць, початок, кінець, тривалість у хвилинах.
 - Тривога на межі **доби** (а отже й місяця) — **розрізати на частини** по київській півночі (вимога користувача, особливо для 1С).
@@ -114,8 +121,8 @@
 - `migrations/*.sql` — застосовуються при старті (`schema_migrations`). Усе зібрано в один `001_init.sql` (15.11.2026, зведено 001–007; звірено з робочою базою — схема й регіони ідентичні). У `schema_migrations` на VPS лишились записи старих файлів — нешкідливо.
   Нові зміни схеми — новим файлом `002_...sql`; `deploy.sh` перед заливкою чистить `migrations/src/test/scripts` на VPS.
 - `src/` за теками (16.11.2026): у корені — лише точки входу (`main.ts`, `migrate.ts`, `sync-once.ts`, `rebuild-periods.ts`);
-  `core/` (config, db, log, validation), `sync/` (alerts-api, sync, scheduler), `http/` (server, auth, common, handlers/),
-  `site/` (site.ts, stats.ts, landing.html, admin.html, favicon.svg), `keys/` (api-keys, key-requests),
+  `core/` (config, db, log, validation), `sync/` (alerts-api, sync, scheduler), `http/` (server, auth, common, openapi, handlers/),
+  `site/` (site.ts, stats.ts, landing.html, docs.html, admin.html, favicon.svg), `keys/` (api-keys, key-requests),
   `notify/` (telegram, contact, monitor).
 - `src/sync/alerts-api.ts` — клієнт API + `parseHistory` (нормалізація).
 - `src/sync/sync.ts` — `applyAlerts` (пакетна вставка нових, оновлення змінених, без запитів у циклі для незмінених), `closeStale`, `rebuildPeriods` (розрізання в SQL
@@ -137,11 +144,24 @@
   (без накладання); у ніч переходу на літній час 03:30 не існує → запуск о 04:00. При старті — догін, якщо вдалого прогону
   не було 20 год (`trigger: startup`). У лозі старту — `scheduler started` з `nextRun`.
 - `deploy.sh` — деплой на VPS; `scripts/backup.sh` — `pg_dump` (пароль лише через `PGPASSWORD`, не аргументом).
-- `test/sync.test.ts` — інтеграційні тести в окремій схемі `alerts_test_<pid>` (створюється/видаляється).
+- Тести (16.11.2026 розбито за темами): `test/unit.test.ts` — без бази (розбір API, ліміти, вебхук, схеми zod;
+  `npm run test:unit`, працює й локально); з базою — `sync`, `api`, `key-requests`, `notify` `.test.ts`; спільне —
+  `test/helpers.ts` (кожен файл — своя схема `alerts_test_<pid>`, `fakeApi.responses`, `fakeTelegram`).
+  Файли запускаються **по черзі** (`--test-concurrency=1`): advisory lock синхронізації спільний для всієї БД.
+  Кожен тест-файл самодостатній — не покладатися на дані з інших файлів.
+- Документація API: `GET /openapi.json` (`src/http/openapi.ts`, OpenAPI 3.1; параметри — зі схем zod `periodsQuery`/
+  `oneCQuery`/`summaryQuery` через `z.toJSONSchema`, відповіді описано вручну; лише клієнтські ендпоінти, адмінські
+  свідомо не описані) і сторінка `GET /docs` (`src/site/docs.html`, Swagger UI з пакета `swagger-ui-dist`, файли —
+  `/docs/assets`, без CDN). `/docs` у sitemap; на лендінгу посилання в розділі «Команди». Нове поле в схемі запиту →
+  додати опис у `PARAM_DESCRIPTIONS`. Телеметрію `@scarf/scarf` (залежність swagger-ui-dist) вимкнено (`allowScripts`, `scarfSettings`).
 - Стиль: лише стрілочні функції (`const name = (...) => {...};`), без `function`; не складати довгі ланцюжки в один
   рядок — розбивати на кроки з осмисленими іменами (вимога користувача). Стрілочні не «піднімаються»: оголошувати
   вище за місце виклику на верхньому рівні модуля. Класи (`ApiError`, `BusyError`) лишаються класами.
-- Залежності: `pg`, `express` 5, `zod` 4, `helmet` 8, `croner` 11 (+ dev: typescript, @types). Користувач (16.11.2026): **сміливо пропонувати** відомі
+  **Перевіряється автоматично** (16.11.2026): ESLint (`eslint.config.js`: заборона `function`, `enum`, `namespace`,
+  parameter properties) + Prettier (`.prettierrc.json`: одинарні лапки, 120 символів); `npm run check` = tsc + eslint +
+  prettier --check; `npm run format` — відформатувати. Таблиці маршрутів (ланцюжок `express.Router().get(...)`,
+  вирівняний стовпчиками) — під `// prettier-ignore`. HTML і `.md` Prettier не чіпає.
+- Залежності: `pg`, `express` 5, `zod` 4, `helmet` 8, `croner` 11, `swagger-ui-dist` 5, `compression` 1 (brotli рівень 5 — рівень 11 за замовчуванням стискав би 1,7 МБ JS ~3 с на кожен запит; nginx стискає лише HTML) (+ dev: typescript, @types, eslint, typescript-eslint, prettier). Користувач (16.11.2026): **сміливо пропонувати** відомі
   бібліотеки, які вважаю кращими, замість саморобної інфраструктури (пропонувати, не ставити мовчки).
 
 ## VPS

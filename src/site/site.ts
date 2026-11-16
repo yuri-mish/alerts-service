@@ -1,4 +1,4 @@
-// Публічні статичні сторінки без ключа: лендінг, robots.txt, sitemap.xml, іконка.
+// Публічні статичні сторінки без ключа: лендінг, документація API, robots.txt, sitemap.xml, іконка.
 // Усе читається/збирається один раз при старті.
 import { readFileSync, statSync } from 'node:fs';
 
@@ -14,8 +14,20 @@ const ONE_HOUR = 'public, max-age=3600';
 const FIVE_MINUTES = 'public, max-age=300';
 
 /** Шляхи API, які пошуковикам індексувати нема чого (без ключа там 401) */
-const API_PATHS = ['/periods', '/summary', '/1c/', '/alerts/', '/runs', '/regions', '/keys', '/sync',
-  '/key-requests', '/contact', '/telegram/', '/health'];
+const API_PATHS = [
+  '/periods',
+  '/summary',
+  '/1c/',
+  '/alerts/',
+  '/runs',
+  '/regions',
+  '/keys',
+  '/sync',
+  '/key-requests',
+  '/contact',
+  '/telegram/',
+  '/health',
+];
 // /stats свідомо НЕ закритий: лендінг тягне його для графіка, інакше Google рендерить сторінку без графіка.
 // /admin свідомо НЕ в robots.txt: заборона там не дає роботу побачити noindex і публічно підказує адресу адмінки.
 // Адмінку закриває заголовок X-Robots-Tag (+ мета-тег noindex на самій сторінці).
@@ -43,6 +55,7 @@ const buildSitemap = (publicUrl: string, landingModified: Date): string => {
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     `  <url><loc>${publicUrl}/</loc><lastmod>${lastmod}</lastmod><changefreq>weekly</changefreq></url>`,
+    `  <url><loc>${publicUrl}/docs</loc><lastmod>${lastmod}</lastmod><changefreq>monthly</changefreq></url>`,
     '</urlset>',
     '',
   ].join('\n');
@@ -53,23 +66,40 @@ export const createSitePages = (publicUrl: string): Map<string, StaticPage> => {
   return new Map<string, StaticPage>([
     ['/', { contentType: 'text/html; charset=utf-8', body: readFileSync(landing), cacheControl: FIVE_MINUTES }],
     ['/robots.txt', { contentType: 'text/plain; charset=utf-8', body: buildRobots(publicUrl), cacheControl: ONE_HOUR }],
-    ['/sitemap.xml', {
-      contentType: 'application/xml; charset=utf-8',
-      body: buildSitemap(publicUrl, statSync(landing).mtime),
-      cacheControl: ONE_HOUR,
-    }],
+    [
+      '/sitemap.xml',
+      {
+        contentType: 'application/xml; charset=utf-8',
+        body: buildSitemap(publicUrl, statSync(landing).mtime),
+        cacheControl: ONE_HOUR,
+      },
+    ],
+    // інтерактивна документація API (Swagger UI); специфікація - /openapi.json, файли Swagger UI - /docs/assets
+    [
+      '/docs',
+      { contentType: 'text/html; charset=utf-8', body: readFileSync(fileUrl('docs.html')), cacheControl: FIVE_MINUTES },
+    ],
     // адмінка: сама сторінка без ключа, усі дані - через API з ключем адміністратора
-    ['/admin', {
-      contentType: 'text/html; charset=utf-8',
-      body: readFileSync(fileUrl('admin.html')),
-      cacheControl: 'no-store',
-      headers: { 'X-Robots-Tag': 'noindex, nofollow, noarchive' },
-    }],
-    ['/favicon.svg', { contentType: 'image/svg+xml', body: readFileSync(fileUrl('favicon.svg')), cacheControl: ONE_HOUR }],
-    [`/${GOOGLE_VERIFICATION_FILE}`, {
-      contentType: 'text/html; charset=utf-8',
-      body: `google-site-verification: ${GOOGLE_VERIFICATION_FILE}`,
-      cacheControl: ONE_HOUR,
-    }],
+    [
+      '/admin',
+      {
+        contentType: 'text/html; charset=utf-8',
+        body: readFileSync(fileUrl('admin.html')),
+        cacheControl: 'no-store',
+        headers: { 'X-Robots-Tag': 'noindex, nofollow, noarchive' },
+      },
+    ],
+    [
+      '/favicon.svg',
+      { contentType: 'image/svg+xml', body: readFileSync(fileUrl('favicon.svg')), cacheControl: ONE_HOUR },
+    ],
+    [
+      `/${GOOGLE_VERIFICATION_FILE}`,
+      {
+        contentType: 'text/html; charset=utf-8',
+        body: `google-site-verification: ${GOOGLE_VERIFICATION_FILE}`,
+        cacheControl: ONE_HOUR,
+      },
+    ],
   ]);
 };

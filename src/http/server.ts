@@ -1,8 +1,10 @@
 // HTTP-сервер на Express: заголовки (CORS, безпека), розбір JSON, роутери, 404, обробка помилок.
 // Маршрути - у handlers/: public (без ключа), data (клієнтський ключ), admin (ключ адміністратора).
 import http from 'node:http';
+import zlib from 'node:zlib';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import helmet from 'helmet';
+import compression from 'compression';
 import { log } from '../core/log.ts';
 import { ValidationError } from '../core/validation.ts';
 import { createFailureTracker, createRateLimiter } from '../keys/api-keys.ts';
@@ -109,6 +111,9 @@ export const createApp = (ctx: Ctx): express.Express => {
 
   const app = express();
   app.disable('x-powered-by');
+  // стиснення відповідей (brotli/gzip): nginx стискає лише HTML, а Swagger UI - 1,7 МБ JS, JSON API - теж текст
+  // brotli за замовчуванням - рівень 11 (дуже повільно на кожен запит); 5 - майже той самий розмір у рази швидше
+  app.use(compression({ brotli: { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5 } } }));
   app.use(securityHeaders);
   app.use(corsHeaders);
   // тіло - JSON незалежно від Content-Type (форми й тести можуть не ставити application/json)

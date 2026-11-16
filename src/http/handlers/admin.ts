@@ -26,8 +26,8 @@ const regionBody = z.object({
   enabled: z.boolean().nullish(),
 });
 
-const syncQuery = z.object({ wait: z.string().optional() });
-const runsQuery = z.object({ limit: intField.optional() });
+const syncQuery = z.strictObject({ wait: z.string().optional() });
+const runsQuery = z.strictObject({ limit: intField.optional() });
 
 export const createAdminRouter = ({ ctx, db, requireAdminKey }: Deps): Router => {
   // --- клієнтські ключі ---
@@ -121,18 +121,18 @@ export const createAdminRouter = ({ ctx, db, requireAdminKey }: Deps): Router =>
   };
 
   // усі маршрути цього роутера - лише з ключем адміністратора
-  const router = express.Router();
-  router.get('/keys',                       requireAdminKey, getKeys);
-  router.post('/keys',                      requireAdminKey, postKey);
-  router.put('/keys/:id',                   requireAdminKey, putKey);
-  router.delete('/keys/:id',                requireAdminKey, removeKey);
-  router.get('/key-requests',               requireAdminKey, getKeyRequests);
-  router.post('/key-requests/:id/approve',  requireAdminKey, decideBy('approve'));
-  router.post('/key-requests/:id/reject',   requireAdminKey, decideBy('reject'));
-  router.post('/sync',                      requireAdminKey, postSync);
-  router.get('/runs',                       requireAdminKey, getRuns);
-  router.get('/runs/:id',                   requireAdminKey, getRun);
-  router.get('/regions',                    requireAdminKey, getRegions);
-  router.put('/regions/:id',                requireAdminKey, putRegion);
-  return router;
+  // prettier-ignore
+  return express.Router()
+    .get('/keys',                       requireAdminKey, getKeys)
+    .post('/keys',                      requireAdminKey, postKey)
+    .put('/keys/:id',                   requireAdminKey, putKey)
+    .delete('/keys/:id',                requireAdminKey, removeKey)
+    .get('/key-requests',               requireAdminKey, getKeyRequests)
+    .post('/key-requests/:id/approve',  requireAdminKey, decideBy('approve'))
+    .post('/key-requests/:id/reject',   requireAdminKey, decideBy('reject'))
+    .post('/sync',                      requireAdminKey, postSync)
+    .get('/runs',                       requireAdminKey, getRuns)
+    .get('/runs/:id',                   requireAdminKey, getRun)
+    .get('/regions',                    requireAdminKey, getRegions)
+    .put('/regions/:id',                requireAdminKey, putRegion);
 };
