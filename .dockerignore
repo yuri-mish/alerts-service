@@ -1,0 +1,8 @@
+node_modules
+.env
+.env.db
+test
+.git
+.env.deploy
+CLAUDE.local.md
+.claude

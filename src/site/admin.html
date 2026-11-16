@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Адмінка доступів</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #f7f7f5; --surface: #ffffff; --text: #1d1d1b; --muted: #5f5f5a; --border: #e2e1dc;
+    --accent: #1f5fbf; --accent-soft: #e8f0fb; --green: #1e7d4f; --green-soft: #e3f3ea;
+    --red: #c0392b; --red-soft: #fbe9e7; --amber: #9a6a00; --amber-soft: #fbf1d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141414; --surface: #1d1d1d; --text: #ececea; --muted: #a3a39d; --border: #2f2f2d;
+      --accent: #7aa7ec; --accent-soft: #1b2a40; --green: #6fcf97; --green-soft: #17301f;
+      --red: #e57366; --red-soft: #3a1d1a; --amber: #e0b44c; --amber-soft: #33290f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141414; --surface: #1d1d1d; --text: #ececea; --muted: #a3a39d; --border: #2f2f2d;
+    --accent: #7aa7ec; --accent-soft: #1b2a40; --green: #6fcf97; --green-soft: #17301f;
+    --red: #e57366; --red-soft: #3a1d1a; --amber: #e0b44c; --amber-soft: #33290f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.4rem; margin: 0; }
+  h2 { font-size: 1.15rem; margin: 0 0 12px; }
+  a { color: var(--accent); }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  .btn { font: inherit; font-weight: 600; font-size: .9rem; padding: 7px 14px; border-radius: 8px; cursor: pointer;
+         border: 1px solid var(--accent); background: var(--accent); color: #fff; white-space: nowrap; }
+  .btn.secondary { background: transparent; color: var(--accent); }
+  .btn.ok { background: var(--green); border-color: var(--green); }
+  .btn.danger { background: transparent; border-color: var(--red); color: var(--red); }
+  .btn.small { font-size: .8rem; padding: 4px 10px; }
+  .btn:disabled { opacity: .5; cursor: wait; }
+  input, textarea { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+                    background: var(--bg); color: var(--text); }
+  input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .row input { flex: 1 1 220px; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+  .tab { font: inherit; font-weight: 600; padding: 7px 16px; border-radius: 8px; border: 1px solid var(--border);
+         background: var(--surface); color: var(--muted); cursor: pointer; }
+  .tab[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+  .count { display: inline-block; min-width: 1.5em; padding: 0 6px; margin-left: 6px; border-radius: 10px;
+           background: var(--red); color: #fff; font-size: .75rem; text-align: center; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+  td.actions { white-space: nowrap; }
+  td.actions .btn + .btn { margin-left: 6px; }
+  .muted { color: var(--muted); font-size: .85rem; }
+  .purpose { max-width: 320px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: .8rem; font-weight: 600; white-space: nowrap; }
+  .badge.pending { background: var(--amber-soft); color: var(--amber); }
+  .badge.approved, .badge.on { background: var(--green-soft); color: var(--green); }
+  .badge.rejected, .badge.off { background: var(--red-soft); color: var(--red); }
+  .empty { color: var(--muted); padding: 16px 8px; }
+  .error { color: var(--red); min-height: 1.4em; margin: 8px 0 0; }
+  dialog { border: 1px solid var(--border); border-radius: 14px; padding: 22px; width: min(560px, calc(100vw - 32px));
+           background: var(--surface); color: var(--text); }
+  dialog::backdrop { background: rgba(0, 0, 0, .45); }
+  dialog h2 { margin-bottom: 8px; }
+  dialog textarea { width: 100%; min-height: 240px; font: .85rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .key-box { font: 1rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--bg); border: 1px solid var(--border);
+             border-radius: 8px; padding: 10px; overflow-wrap: anywhere; margin: 8px 0; }
+  .dialog-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 14px; }
+  .warn { background: var(--amber-soft); color: var(--amber); border-radius: 8px; padding: 8px 12px; font-size: .9rem; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+
+<!-- вхід -->
+<section id="login" class="card" style="max-width:440px;margin:60px auto">
+  <h1 style="margin-bottom:6px">Адмінка доступів</h1>
+  <p class="muted">Введіть ключ адміністратора. Він зберігається лише в цій вкладці браузера до її закриття.</p>
+  <form id="login-form" class="row" autocomplete="off">
+    <input id="login-key" type="password" placeholder="Ключ адміністратора" required>
+    <button class="btn" type="submit">Увійти</button>
+  </form>
+  <div class="error" id="login-error"></div>
+</section>
+
+<!-- робоча частина -->
+<section id="app" hidden>
+  <div class="top">
+    <h1>Адмінка доступів</h1>
+    <div class="row">
+      <a href="/" target="_blank" rel="noopener">Сайт</a>
+      <button class="btn secondary small" type="button" id="refresh">Оновити</button>
+      <button class="btn secondary small" type="button" id="logout">Вийти</button>
+    </div>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-tab="requests">Заявки<span class="count" id="pending-count" hidden></span></button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="keys">Ключі</button>
+  </div>
+
+  <div data-panel="requests">
+    <div class="card">
+      <div class="table-wrap"><table>
+        <thead><tr><th>№</th><th>Дата</th><th>Хто</th><th>Email</th><th>Для чого</th><th>Статус</th><th></th></tr></thead>
+        <tbody id="requests-body"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div data-panel="keys" hidden>
+    <div class="card">
+      <h2>Новий ключ</h2>
+      <form id="create-form" class="row" autocomplete="off">
+        <input id="create-name" placeholder="Назва (кому видано)" required maxlength="200">
+        <input id="create-key" placeholder="Свій ключ (необов'язково, від 8 символів)">
+        <button class="btn" type="submit">Створити</button>
+      </form>
+      <div class="error" id="create-error"></div>
+    </div>
+    <div class="card">
+      <div class="table-wrap"><table>
+        <thead><tr><th>№</th><th>Кому видано</th><th>Назва</th><th>Стан</th><th>Створено</th><th>Останнє використання</th><th></th></tr></thead>
+        <tbody id="keys-body"></tbody>
+      </table></div>
+      <p class="muted" style="margin:10px 0 0">Ключ адміністратора тут не показується: він задається в <code>.env</code> на сервері.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- результат рішення по заявці: лист для пересилання -->
+<dialog id="letter-dialog">
+  <h2 id="letter-title"></h2>
+  <p class="warn" id="letter-warn" hidden>Ключ показується лише зараз: у базі зберігається тільки його хеш.</p>
+  <textarea id="letter-text" readonly></textarea>
+  <div class="dialog-actions">
+    <a class="btn secondary" id="letter-mail" href="#">Відкрити в пошті</a>
+    <button class="btn secondary" type="button" id="letter-copy">Копіювати</button>
+    <button class="btn" type="button" data-close>Готово</button>
+  </div>
+</dialog>
+
+<!-- новий ключ -->
+<dialog id="key-dialog">
+  <h2>Ключ створено</h2>
+  <p class="warn">Скопіюйте ключ зараз: більше його не побачити (у базі лише хеш).</p>
+  <div class="key-box" id="key-value"></div>
+  <div class="dialog-actions">
+    <button class="btn secondary" type="button" id="key-copy">Копіювати</button>
+    <button class="btn" type="button" data-close>Готово</button>
+  </div>
+</dialog>
+
+<script>
+  const STORAGE_KEY = 'alerts-admin-key';
+  const $ = (id) => document.getElementById(id);
+
+  // --- ключ адміністратора: лише sessionStorage (може бути недоступний - тоді живе до перезавантаження) ---
+  let adminKey = '';
+  try { adminKey = sessionStorage.getItem(STORAGE_KEY) || ''; } catch { /* приватний режим тощо */ }
+  const saveKey = (value) => {
+    adminKey = value;
+    try {
+      if (value) sessionStorage.setItem(STORAGE_KEY, value);
+      else sessionStorage.removeItem(STORAGE_KEY);
+    } catch { /* ігноруємо */ }
+  };
+
+  class ApiError extends Error {
+    constructor(status, message) { super(message); this.status = status; }
+  }
+
+  const api = async (method, path, body) => {
+    const headers = { 'X-Api-Key': adminKey };
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    const res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401 || res.status === 403) {
+      logout('Ключ не підходить або не є ключем адміністратора.');
+      throw new ApiError(res.status, 'unauthorized');
+    }
+    if (!res.ok) throw new ApiError(res.status, data.error || `HTTP ${res.status}`);
+    return data;
+  };
+
+  // --- форматування ---
+  const formatDate = (value) => {
+    if (!value) return '—';
+    return new Date(value).toLocaleString('uk-UA', { dateStyle: 'short', timeStyle: 'short' });
+  };
+  const STATUS_TEXT = { pending: 'очікує', approved: 'прийнято', rejected: 'відмовлено' };
+
+  /** Комірка таблиці з текстом (без innerHTML - дані вводять сторонні люди) */
+  const cell = (text, className) => {
+    const td = document.createElement('td');
+    if (className) td.className = className;
+    td.textContent = text;
+    return td;
+  };
+  const badge = (text, className) => {
+    const span = document.createElement('span');
+    span.className = `badge ${className}`;
+    span.textContent = text;
+    return span;
+  };
+  const button = (text, className, onClick) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `btn small ${className}`;
+    b.textContent = text;
+    b.addEventListener('click', async () => {
+      b.disabled = true;
+      try {
+        await onClick();
+      } catch (e) {
+        if (e.status !== 401 && e.status !== 403) alert(`Помилка: ${e.message}`);
+      } finally {
+        b.disabled = false;
+      }
+    });
+    return b;
+  };
+  const emptyRow = (tbody, columns, text) => {
+    const tr = document.createElement('tr');
+    const td = cell(text, 'empty');
+    td.colSpan = columns;
+    tr.append(td);
+    tbody.append(tr);
+  };
+  const copy = async (text, btn) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.textContent = 'Скопійовано';
+    } catch {
+      btn.textContent = 'Не вдалося';
+    }
+    setTimeout(() => { btn.textContent = 'Копіювати'; }, 1500);
+  };
+
+  // --- заявки ---
+  const renderRequests = (rows) => {
+    const tbody = $('requests-body');
+    tbody.replaceChildren();
+    const pending = rows.filter((r) => r.status === 'pending').length;
+    $('pending-count').hidden = pending === 0;
+    $('pending-count').textContent = String(pending);
+    if (!rows.length) return emptyRow(tbody, 7, 'Заявок ще немає.');
+
+    for (const r of rows) {
+      const tr = document.createElement('tr');
+      const who = cell(r.name);
+      if (r.company) {
+        const company = document.createElement('div');
+        company.className = 'muted';
+        company.textContent = r.company;
+        who.append(company);
+      }
+      const status = document.createElement('td');
+      status.append(badge(STATUS_TEXT[r.status] || r.status, r.status));
+      if (r.api_key_id) {
+        const key = document.createElement('div');
+        key.className = 'muted';
+        key.textContent = `ключ №${r.api_key_id}`;
+        status.append(key);
+      }
+      const actions = cell('', 'actions');
+      if (r.status === 'pending') {
+        actions.append(
+          button('Прийняти', 'ok', () => decide(r.id, 'approve')),
+          button('Відмовити', 'danger', () => decide(r.id, 'reject')),
+        );
+      } else {
+        actions.append(Object.assign(document.createElement('span'), { className: 'muted', textContent: formatDate(r.decided_at) }));
+      }
+      tr.append(cell(String(r.id)), cell(formatDate(r.created_at)), who, cell(r.email), cell(r.purpose, 'purpose'), status, actions);
+      tbody.append(tr);
+    }
+  };
+
+  /** Лист: "Кому: ...", "Тема: ...", порожній рядок, текст - для посилання mailto */
+  const mailtoFromLetter = (letter) => {
+    const lines = letter.split('\n');
+    const to = lines[0].replace(/^Кому:\s*/, '');
+    const subject = lines[1].replace(/^Тема:\s*/, '');
+    const body = lines.slice(3).join('\n');
+    return `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  const decide = async (id, action) => {
+    const question = action === 'approve'
+      ? `Прийняти заявку №${id} і створити ключ?`
+      : `Відмовити за заявкою №${id}?`;
+    if (!confirm(question)) return;
+    try {
+      const decision = await api('POST', `/key-requests/${id}/${action}`);
+      $('letter-title').textContent = decision.key
+        ? `Заявку №${id} прийнято, ключ №${decision.key.id}`
+        : `Заявку №${id} відхилено`;
+      $('letter-warn').hidden = !decision.key;
+      $('letter-text').value = decision.letter;
+      $('letter-mail').href = mailtoFromLetter(decision.letter);
+      $('letter-dialog').showModal();
+    } catch (e) {
+      if (e.status === 409) alert('Заявку вже оброблено (можливо, в Telegram).');
+      else if (e.status !== 401 && e.status !== 403) alert(`Помилка: ${e.message}`);
+    }
+    await loadAll();
+  };
+
+  // --- ключі ---
+  /** Кому видано: ім'я, компанія, email і номер заявки; для створених вручну - підказка */
+  const ownerCell = (owner) => {
+    if (!owner) return cell('вручну (див. назву)', 'muted');
+    const td = cell(owner.name);
+    const details = [owner.company, owner.email, `заявка №${owner.request_id}`].filter(Boolean);
+    for (const text of details) {
+      const line = document.createElement('div');
+      line.className = 'muted';
+      line.textContent = text;
+      td.append(line);
+    }
+    return td;
+  };
+
+  const renderKeys = (rows) => {
+    const tbody = $('keys-body');
+    tbody.replaceChildren();
+    if (!rows.length) return emptyRow(tbody, 7, 'Клієнтських ключів немає.');
+
+    for (const k of rows) {
+      const tr = document.createElement('tr');
+      const state = document.createElement('td');
+      state.append(badge(k.enabled ? 'увімкнено' : 'вимкнено', k.enabled ? 'on' : 'off'));
+      const actions = cell('', 'actions');
+      actions.append(
+        button(k.enabled ? 'Вимкнути' : 'Увімкнути', 'secondary', async () => {
+          await api('PUT', `/keys/${k.id}`, { enabled: !k.enabled });
+          await loadKeys();
+        }),
+        button('Перейменувати', 'secondary', async () => {
+          const name = prompt('Нова назва ключа', k.name);
+          if (!name || !name.trim() || name.trim() === k.name) return;
+          await api('PUT', `/keys/${k.id}`, { name: name.trim() });
+          await loadKeys();
+        }),
+        button('Видалити', 'danger', async () => {
+          if (!confirm(`Видалити ключ №${k.id} «${k.name}» назавжди? Запити з ним перестануть працювати.`)) return;
+          await api('DELETE', `/keys/${k.id}`);
+          await loadAll();
+        }),
+      );
+      tr.append(cell(String(k.id)), ownerCell(k.owner), cell(k.name), state, cell(formatDate(k.created_at)),
+        cell(formatDate(k.last_used_at)), actions);
+      tbody.append(tr);
+    }
+  };
+
+  $('create-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    $('create-error').textContent = '';
+    const body = { name: $('create-name').value.trim() };
+    const ownKey = $('create-key').value.trim();
+    if (ownKey) body.key = ownKey;
+    try {
+      const created = await api('POST', '/keys', body);
+      $('create-form').reset();
+      $('key-value').textContent = created.key;
+      $('key-dialog').showModal();
+      await loadKeys();
+    } catch (e) {
+      if (e.status === 409) $('create-error').textContent = 'Такий ключ уже існує.';
+      else if (e.status !== 401 && e.status !== 403) $('create-error').textContent = `Помилка: ${e.message}`;
+    }
+  });
+
+  // --- завантаження, вхід/вихід, вкладки, діалоги ---
+  const loadRequests = async () => renderRequests(await api('GET', '/key-requests'));
+  const loadKeys = async () => renderKeys(await api('GET', '/keys'));
+  const loadAll = async () => {
+    try { await Promise.all([loadRequests(), loadKeys()]); } catch { /* помилку вже показано */ }
+  };
+
+  const showApp = (visible) => {
+    $('login').hidden = visible;
+    $('app').hidden = !visible;
+  };
+  const logout = (message) => {
+    saveKey('');
+    showApp(false);
+    $('login-error').textContent = message || '';
+  };
+
+  $('login-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    saveKey($('login-key').value.trim());
+    $('login-error').textContent = '';
+    try {
+      await api('GET', '/keys');
+      $('login-form').reset();
+      showApp(true);
+      await loadAll();
+    } catch (e) {
+      if (e.status !== 401 && e.status !== 403) $('login-error').textContent = `Помилка: ${e.message}`;
+    }
+  });
+  $('logout').addEventListener('click', () => logout());
+  $('refresh').addEventListener('click', () => loadAll());
+
+  document.querySelectorAll('.tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
+      document.querySelectorAll('[data-panel]').forEach((panel) => { panel.hidden = panel.dataset.panel !== tab.dataset.tab; });
+    });
+  });
+  document.querySelectorAll('dialog').forEach((dialog) => {
+    dialog.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => dialog.close()));
+  });
+  $('letter-copy').addEventListener('click', (event) => copy($('letter-text').value, event.currentTarget));
+  $('key-copy').addEventListener('click', (event) => copy($('key-value').textContent, event.currentTarget));
+
+  if (adminKey) {
+    showApp(true);
+    loadAll();
+  }
+</script>
+</body>
+</html>

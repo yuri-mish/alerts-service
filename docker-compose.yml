@@ -1,0 +1,19 @@
+services:
+  alerts:
+    build: .
+    image: alerts-service
+    container_name: alerts-service
+    restart: unless-stopped
+    # host network: Postgres on the host at 127.0.0.1:5432, HTTP on 127.0.0.1:${PORT} behind nginx
+    network_mode: host
+    env_file:
+      - .env.db
+      - .env
+    # бекапи (scripts/backup.sh) - лише для читання: спостерігач перевіряє, що свіжий дамп є
+    volumes:
+      - ${HOME}/backups/alerts:/backups:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

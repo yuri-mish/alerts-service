@@ -1,0 +1,33 @@
+{
+  "name": "alerts-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Daily sync of alerts.in.ua history into Postgres + HTTP API",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node src/main.ts",
+    "migrate": "node src/migrate.ts",
+    "sync": "node src/sync-once.ts",
+    "rebuild": "node src/rebuild-periods.ts",
+    "typecheck": "tsc",
+    "test": "node --test test/*.test.ts",
+    "deploy": "bash deploy.sh",
+    "deploy:fast": "bash deploy.sh --no-test"
+  },
+  "dependencies": {
+    "croner": "^11.0.1",
+    "express": "^5.3.0",
+    "helmet": "^8.3.0",
+    "pg": "^8.13.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.11.10",
+    "typescript": "^5.8.3"
+  }
+}

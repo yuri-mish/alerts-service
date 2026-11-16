@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash deploy.sh)",
+      "Bash(grep -v \"^\\\\S*:\\\\s*//\")",
+      "Bash(grep -v \"^\\\\S*:[0-9]*:\\\\s*//\")",
+      "Bash(node -e ' *)",
+      "Bash(npx tsc *)"
+    ]
+  }
+}

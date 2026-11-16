@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<!-- Google tag (Google Analytics): лише на лендінгу, не в адмінці -->
+<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-PX9DJDQV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API повітряних тривог</title>
+<meta name="description" content="Архів повітряних тривог по областях, районах і громадах України: початок, кінець і тривалість, червоний і жовтий рівні, години за місяць, вигрузка для 1С. Безкоштовний API.">
+<meta name="robots" content="index, follow">
+<meta name="google-site-verification" content="YKrMOj68EH1wi_msz7xEnW3MZO4mRYrp4dIUSqM4HZQ">
+<link rel="canonical" href="https://alerts.starsam.net/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<meta name="theme-color" content="#1f5fbf">
+
+<!-- соцмережі й месенджери (превʼю посилання) -->
+<meta property="og:type" content="website">
+<meta property="og:locale" content="uk_UA">
+<meta property="og:site_name" content="alerts.starsam.net">
+<meta property="og:url" content="https://alerts.starsam.net/">
+<meta property="og:title" content="API повітряних тривог: готова інтеграція з 1С">
+<meta property="og:description" content="Архів повітряних тривог по областях, районах і громадах України: JSON і CSV для будь-якої системи та готова вигрузка для 1С.">
+<meta name="twitter:card" content="summary">
+
+<!-- структуровані дані для пошукових систем -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "name": "Історія повітряних тривог в Україні — API",
+      "url": "https://alerts.starsam.net/",
+      "inLanguage": "uk"
+    },
+    {
+      "@type": "WebAPI",
+      "name": "API історії повітряних тривог в Україні",
+      "url": "https://alerts.starsam.net/",
+      "description": "HTTP API з архівом повітряних тривог по областях, районах і громадах України: відрізки тривог по добах, підсумки годин за місяць з урахуванням перекриттів, вигрузка для 1С.",
+      "documentation": "https://alerts.starsam.net/",
+      "inLanguage": "uk",
+      "isAccessibleForFree": true,
+      "areaServed": { "@type": "Country", "name": "Україна" }
+    }
+  ]
+}
+</script>
+<style>
+  /* Сервіс для 1С: шапка показує результат - вікно обробки 1С зі справжніми рядками вигрузки.
+     Plex Sans для тексту, Plex Mono для даних (реквізити, дати), стриманий синій акцент, теплі нейтральні. */
+  :root {
+    --bg: #f7f7f5; --surface: #ffffff; --text: #1d1d1b; --muted: #5f5f5a; --border: #e2e1dc;
+    --accent: #1f5fbf; --accent-soft: #e8f0fb; --code-bg: #f0efeb; --red: #c0392b; --yellow: #b7860b;
+    --chart-bar: #1f5fbf; --chart-grid: #ecebe6;
+    --onec-chrome: #eef0f2; --onec-head: #f4f5f6; --onec-row-active: #fdf3c8; --onec-line: #dfe2e5;
+    --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141414; --surface: #1d1d1d; --text: #ececea; --muted: #a3a39d; --border: #2f2f2d;
+      --accent: #7aa7ec; --accent-soft: #1b2a40; --code-bg: #232322; --red: #e57366; --yellow: #e0b44c;
+      --chart-bar: #5b93e6; --chart-grid: #2a2a28;
+      --onec-chrome: #262829; --onec-head: #222425; --onec-row-active: #3a3218; --onec-line: #34373a;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141414; --surface: #1d1d1d; --text: #ececea; --muted: #a3a39d; --border: #2f2f2d;
+    --accent: #7aa7ec; --accent-soft: #1b2a40; --code-bg: #232322; --red: #e57366; --yellow: #e0b44c;
+    --chart-bar: #5b93e6; --chart-grid: #2a2a28;
+    --onec-chrome: #262829; --onec-head: #222425; --onec-row-active: #3a3218; --onec-line: #34373a;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.6 var(--font-sans);
+  }
+  main { max-width: 880px; margin: 0 auto; padding: 40px 16px 64px; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 12px; text-wrap: balance; }
+
+  /* шапка */
+  .eyebrow { font: 500 .8rem/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--accent);
+             margin: 0 0 14px; }
+  .hero h1 { font-size: clamp(2rem, 5vw, 2.8rem); font-weight: 700; letter-spacing: -.01em; margin-bottom: 14px; }
+  .hero .lead { max-width: 640px; }
+
+  /* вікно обробки 1С з рядками вигрузки */
+  .onec { margin: 28px 0 0; border: 1px solid var(--onec-line); border-radius: 10px; overflow: hidden;
+          background: var(--surface); box-shadow: 0 12px 32px -18px rgba(20, 40, 80, .35); }
+  .onec-bar { display: flex; align-items: center; gap: 10px; padding: 9px 14px; background: var(--onec-chrome);
+              border-bottom: 1px solid var(--onec-line); font-size: .85rem; font-weight: 600; }
+  .onec-bar .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--onec-line); flex: none; }
+  .onec-bar .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .onec-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 14px;
+                border-bottom: 1px solid var(--onec-line); font-size: .82rem; color: var(--muted); }
+  .onec-btn { font-weight: 600; padding: 4px 12px; border-radius: 4px; border: 1px solid var(--onec-line);
+              background: var(--surface); color: var(--text); }
+  .onec-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .onec-field { font-family: var(--font-mono); color: var(--text); padding: 3px 8px; border: 1px solid var(--onec-line);
+                border-radius: 4px; background: var(--surface); }
+  .onec-grid { overflow-x: auto; }
+  .onec-grid table { width: 100%; border-collapse: collapse; font: .76rem/1.4 var(--font-mono); white-space: nowrap; }
+  .onec-grid th { font: 600 .74rem/1.3 var(--font-sans); text-align: left; color: var(--muted); background: var(--onec-head);
+                  padding: 7px 7px; border-bottom: 1px solid var(--onec-line); border-right: 1px solid var(--onec-line); }
+  .onec-grid td { padding: 6px 7px; border-bottom: 1px solid var(--onec-line); border-right: 1px solid var(--onec-line);
+                  font-variant-numeric: tabular-nums; }
+  .onec-grid th:last-child, .onec-grid td:last-child { border-right: 0; }
+  .onec-grid tr:last-child td { border-bottom: 0; }
+  .onec-grid td.n { color: var(--muted); text-align: right; }
+  .onec-grid td.num { text-align: right; }
+  .onec-grid tr.active td { background: var(--onec-row-active); }
+  .onec-caption { font-size: .82rem; color: var(--muted); padding: 9px 14px; border-top: 1px solid var(--onec-line);
+                  background: var(--onec-head); }
+
+  /* як дані потрапляють в 1С: справжня послідовність кроків */
+  .flow { list-style: none; margin: 20px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .flow li { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; font-size: .92rem; }
+  .flow .step { font: 500 .8rem/1 var(--font-mono); color: var(--accent); border: 1px solid var(--accent); border-radius: 50%;
+                width: 24px; height: 24px; display: grid; place-items: center; margin-top: 1px; }
+  .flow b { display: block; }
+  .flow span { color: var(--muted); }
+  .flow code { white-space: nowrap; }
+  @media (max-width: 640px) { .flow { grid-template-columns: 1fr; } }
+  h2 { font-size: 1.4rem; margin: 48px 0 12px; }
+  h3 { font-size: 1.05rem; margin: 24px 0 8px; }
+  p { margin: 0 0 12px; }
+  a { color: var(--accent); }
+  .lead { font-size: 1.1rem; color: var(--muted); max-width: 680px; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 24px 0 0; }
+  .fact { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .fact b { display: block; font-size: 1.05rem; }
+  .fact span { color: var(--muted); font-size: .9rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin: 16px 0; }
+  .endpoint { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin: 0 0 8px; }
+  .method { background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: .8rem; padding: 2px 8px; border-radius: 6px; }
+  .path { font: 600 1.05rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+  code { font: .9em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  pre { position: relative; background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; overflow-x: auto; margin: 8px 0 16px; }
+  pre code { background: none; padding: 0; font-size: .85rem; line-height: 1.5; }
+  .copy { position: absolute; top: 8px; right: 8px; font: inherit; font-size: .75rem; padding: 2px 8px; border-radius: 6px;
+          border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .table-wrap { overflow-x: auto; }
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 12px 0 0; }
+  .tab { font: inherit; font-size: .85rem; padding: 4px 12px; border-radius: 6px 6px 0 0; border: 1px solid var(--border);
+         border-bottom: none; background: transparent; color: var(--muted); cursor: pointer; }
+  .tab[aria-selected="true"] { background: var(--code-bg); color: var(--text); font-weight: 600; }
+  .tabs + .panel pre { margin-top: 0; border-top-left-radius: 0; }
+  .panel[hidden] { display: none; }
+  .note { border-left: 3px solid var(--accent); padding: 8px 14px; background: var(--accent-soft); border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .lvl-red { color: var(--red); font-weight: 600; }
+  .lvl-yellow { color: var(--yellow); font-weight: 600; }
+  .regions { columns: 2 220px; font-size: .92rem; margin: 8px 0 0; padding: 0; list-style: none; }
+  .regions li { break-inside: avoid; padding: 2px 0; }
+  .regions code { min-width: 2.4em; display: inline-block; text-align: center; }
+  .beta { background: var(--accent-soft); border-bottom: 1px solid var(--border); color: var(--text);
+          text-align: center; padding: 10px 16px; font-size: .95rem; }
+  .beta b { color: var(--accent); }
+  .btn { font: inherit; font-weight: 600; padding: 10px 20px; border-radius: 8px; border: 1px solid var(--accent);
+         background: var(--accent); color: #fff; cursor: pointer; }
+  .btn:hover { filter: brightness(1.08); }
+  .btn.secondary { background: transparent; color: var(--accent); }
+  .btn:disabled { opacity: .6; cursor: wait; }
+  .cta { margin: 24px 0 0; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  dialog { border: 1px solid var(--border); border-radius: 14px; padding: 0; width: min(480px, calc(100vw - 32px));
+           background: var(--surface); color: var(--text); }
+  dialog::backdrop { background: rgba(0, 0, 0, .45); }
+  .modal { padding: 24px; }
+  .modal h2 { margin: 0 0 4px; font-size: 1.3rem; }
+  .modal p { color: var(--muted); font-size: .92rem; }
+  .modal label { display: block; font-size: .9rem; font-weight: 600; margin: 14px 0 4px; }
+  .modal label span { color: var(--muted); font-weight: 400; }
+  .modal input, .modal textarea { width: 100%; font: inherit; padding: 9px 11px; border-radius: 8px;
+           border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+  .modal textarea { min-height: 96px; resize: vertical; }
+  .modal input:focus, .modal textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .modal .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  .modal p.consent { font-size: .8rem; line-height: 1.45; margin: 16px 0 0; }
+  .modal .status { margin: 14px 0 0; font-size: .92rem; min-height: 1.4em; }
+  .modal .status.error { color: var(--red); }
+  .result { text-align: center; padding: 28px 24px 24px; }
+  .result .icon { width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 14px; display: grid; place-items: center;
+                  font-size: 28px; font-weight: 700; background: var(--accent-soft); color: var(--accent); }
+  .result.error .icon { background: color-mix(in srgb, var(--red) 15%, transparent); color: var(--red); }
+  .result h2 { margin: 0 0 8px; font-size: 1.3rem; }
+  .result p { color: var(--muted); margin: 0 0 6px; }
+  .result .actions { justify-content: center; }
+  .hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+  /* графік «тривоги за 30 днів» */
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin: 16px 0 0; }
+  .chart-card h2 { margin: 0 0 4px; font-size: 1.2rem; }
+  .chart-sub { color: var(--muted); font-size: .9rem; margin: 0 0 14px; }
+  .chart { position: relative; }
+  .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .chart .bar { fill: var(--chart-bar); }
+  .chart .grid { stroke: var(--chart-grid); stroke-width: 1; }
+  .chart .label { fill: var(--text); font-size: 13px; }
+  .chart .tick, .chart .value { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .chart .value { fill: var(--text); font-weight: 600; }
+  .chart .row { cursor: default; outline: none; }
+  .chart .row .hit { fill: transparent; }
+  .chart .row:hover .hit, .chart .row:focus .hit { fill: var(--accent-soft); }
+  .chart-tip { position: absolute; pointer-events: none; background: var(--surface); color: var(--text);
+               border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: .85rem; line-height: 1.45;
+               box-shadow: 0 4px 16px rgba(0, 0, 0, .12); white-space: nowrap; z-index: 2; }
+  .chart-tip b { display: block; }
+  .chart-tip span { color: var(--muted); }
+  .chart-card details { margin-top: 12px; font-size: .9rem; }
+  .chart-card summary { cursor: pointer; color: var(--accent); }
+  .chart-card td.num, .chart-card th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  footer { margin-top: 56px; color: var(--muted); font-size: .88rem; border-top: 1px solid var(--border); padding-top: 16px; }
+</style>
+</head>
+<body>
+<div class="beta">Сервіс наразі працює <b>безкоштовно</b> і в <b>тестовому режимі</b>: можливі зміни API і перерви в роботі.</div>
+<main>
+
+<header>
+  <div class="hero">
+    <p class="eyebrow">API · готова інтеграція з 1С</p>
+    <h1>Історія повітряних тривог для ваших систем</h1>
+    <p class="lead">Архів тривог по областях, районах і громадах України через HTTP API: JSON і CSV для будь-якої
+      системи. Для 1С є готова вигрузка: рядок на кожну добу тривоги, київський час, місяць одним запитом.</p>
+  </div>
+
+  <figure class="onec" aria-label="Приклад: вигрузка тривог у формі 1С">
+    <div class="onec-bar" aria-hidden="true">
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      <span class="title">Завантаження тривог · alerts.starsam.net</span>
+    </div>
+    <div class="onec-tools">
+      <span class="onec-btn primary">Завантажити</span>
+      <span class="onec-btn">Записати і закрити</span>
+      <span>Період: <span class="onec-field">Листопад 2026</span></span>
+      <span>Територія: <span class="onec-field">75 · Бучанський район</span></span>
+    </div>
+    <div class="onec-grid">
+      <table>
+        <thead><tr><th>№</th><th>Місяць</th><th>День місяця</th><th>Код території</th><th>Тип події</th><th>Номер тривоги</th><th>Початок</th><th>Кінець</th></tr></thead>
+        <tbody>
+          <tr><td class="n">1</td><td>Листопад 2026</td><td class="num">12</td><td class="num">75</td><td>Тривога</td><td class="num">1</td><td>12.11.2026 0:54:33</td><td>12.11.2026 2:00:19</td></tr>
+          <tr><td class="n">2</td><td>Листопад 2026</td><td class="num">12</td><td class="num">75</td><td>Тривога</td><td class="num">2</td><td>12.11.2026 3:45:07</td><td>12.11.2026 6:44:06</td></tr>
+          <tr class="active"><td class="n">3</td><td>Листопад 2026</td><td class="num">12</td><td class="num">75</td><td>Тривога</td><td class="num">3</td><td>12.11.2026 6:58:49</td><td>12.11.2026 9:27:45</td></tr>
+          <tr><td class="n">4</td><td>Листопад 2026</td><td class="num">12</td><td class="num">75</td><td>Тривога</td><td class="num">4</td><td>12.11.2026 10:08:31</td><td>12.11.2026 10:12:51</td></tr>
+          <tr><td class="n">5</td><td>Листопад 2026</td><td class="num">12</td><td class="num">75</td><td>Тривога</td><td class="num">5</td><td>12.11.2026 10:40:33</td><td>12.11.2026 11:30:31</td></tr>
+          <tr><td class="n">6</td><td>Листопад 2026</td><td class="num">12</td><td class="num">75</td><td>Тривога</td><td class="num">6</td><td>12.11.2026 12:31:16</td><td>12.11.2026 12:44:34</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <figcaption class="onec-caption">Справжні тривоги з <code>/1c/alerts</code>: Бучанський район, 12 листопада 2026.
+      У JSON кожна колонка має ім'я реквізиту (<code>ПериодМесяц</code>, <code>ДеньМесяца</code>, <code>КодТеритории</code>…),
+      тож рядки лягають у регістр без перетворень.</figcaption>
+  </figure>
+
+  <ol class="flow">
+    <li><span class="step">1</span><div><b>Щоночі о 03:30</b><span>забираємо історію тривог по 24 регіонах з alerts.in.ua</span></div></li>
+    <li><span class="step">2</span><div><b>Готуємо для обліку</b><span>ріжемо по добах, нумеруємо тривоги в межах доби й території</span></div></li>
+    <li><span class="step">3</span><div><b>Забираєте дані</b><span>1С — місяць одним запитом <code>/1c/alerts</code>; інші системи — <code>/periods</code> і <code>/summary</code></span></div></li>
+  </ol>
+
+  <div class="cta">
+    <button class="btn" type="button" data-open-request>Отримати ключ</button>
+    <button class="btn secondary" type="button" data-open-contact>Написати автору</button>
+    <a href="#commands">Команди API ↓</a>
+  </div>
+  <div class="facts">
+    <div class="fact"><b>24 регіони</b><span>м. Київ і всі області, крім Луганської та АР Крим</span></div>
+    <div class="fact"><b>Райони й громади</b><span>деталізація така, як у джерела</span></div>
+    <div class="fact"><b>Рівень тривоги</b><span><span class="lvl-red">червоний</span> / <span class="lvl-yellow">жовтий</span></span></div>
+    <div class="fact"><b>Щодня о 03:30</b><span>оновлення за київським часом</span></div>
+  </div>
+</header>
+
+<section class="chart-card" id="stats" hidden>
+  <h2>Тривоги за останні 30 днів</h2>
+  <p class="chart-sub" id="stats-sub">Години, коли тривога була хоч десь в області: у будь-якому районі чи громаді.</p>
+  <div class="chart" id="stats-chart"></div>
+  <details>
+    <summary>Показати таблицею</summary>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Регіон</th><th class="num">Годин</th><th class="num">з них червоний</th><th class="num">Тривог</th></tr></thead>
+      <tbody id="stats-table"></tbody>
+    </table></div>
+  </details>
+</section>
+
+<section>
+  <h2>Як почати</h2>
+  <p>Усі запити — <code>GET</code> на <code>https://alerts.starsam.net</code> з ключем у заголовку <code>X-Api-Key</code>.
+    Відповідь — JSON (або CSV з параметром <code>format=csv</code>).</p>
+  <pre><code>curl -H "X-Api-Key: ВАШ_КЛЮЧ" "https://alerts.starsam.net/summary?month=2026-11&amp;region=31"</code></pre>
+  <p>Ключ безкоштовний — <a href="#" data-open-request>заповніть заявку</a>, і ми надішлемо його на ваш email. Ліміт — <b>6 запитів на хвилину</b> на ключ; понад нього сервер відповідає
+    <code>429</code> із заголовком <code>Retry-After</code> (через скільки секунд можна повторити).
+    Запити з браузера з будь-якого сайту дозволено (CORS).</p>
+  <div class="note">Ключ, вставлений у JavaScript на сторінці сайту, бачать усі відвідувачі.
+    Для публічних сайтів робіть запити зі свого сервера.</div>
+</section>
+
+<section>
+  <h2>Що означають дані</h2>
+  <ul>
+    <li><b>Лише повітряні тривоги.</b> Загрози артобстрілу, вуличних боїв тощо не враховуються.</li>
+    <li><b>Тривога розрізана по добах.</b> Якщо тривога триває через північ, буде два рядки: до 00:00 і після 00:00
+      (за київським часом). Тому тривога на межі місяців потрапляє в обидва місяці.</li>
+    <li><b>Рівень</b> — останній відомий для тривоги (<code>red</code> / <code>yellow</code>).</li>
+    <li><b>Території:</b> <code>region</code> — область (UID регіону), <code>location</code> — конкретна територія
+      (сама область, район, громада або місто). В одній області тривоги району й громади можуть перекриватися.</li>
+    <li><b>Час</b> у полях <code>*_local</code> і у вигрузці для 1С — київський; <code>started_at</code> / <code>finished_at</code> — UTC.</li>
+    <li><b>Тривога, що ще триває,</b> має порожній кінець.</li>
+    <li><b>Глибина архіву:</b> з листопада 2026 року.</li>
+  </ul>
+</section>
+
+<section id="commands">
+  <h2>Команди</h2>
+
+  <!-- 1. periods -->
+  <div class="card">
+    <div class="endpoint"><span class="method">GET</span><span class="path">/periods</span></div>
+    <p>Список тривог: <b>один рядок на кожну добу тривоги</b> з початком, кінцем, тривалістю в хвилинах і рівнем.
+      Підходить для власних звітів і аналізу.</p>
+    <div class="table-wrap"><table>
+      <tr><th>Параметр</th><th>Опис</th></tr>
+      <tr><td><code>month</code></td><td>Місяць <code>YYYY-MM</code>, напр. <code>2026-11</code></td></tr>
+      <tr><td><code>region</code></td><td>UID регіону або кілька через кому: <code>14,31</code></td></tr>
+      <tr><td><code>location</code></td><td>UID території (район, громада): <code>75</code> або <code>75,76</code></td></tr>
+      <tr><td><code>level</code></td><td><code>red</code> або <code>yellow</code></td></tr>
+      <tr><td><code>format</code></td><td><code>csv</code> — файл для Excel (роздільник <code>;</code>, UTF-8 з BOM)</td></tr>
+      <tr><td><code>limit</code></td><td>Максимум рядків (за замовчуванням 50 000)</td></tr>
+    </table></div>
+    <p style="margin-top:8px">Потрібен хоча б один із фільтрів <code>month</code>, <code>region</code>, <code>location</code>.
+      Сортування — за початком, далі за територією.</p>
+
+    <div class="tabs" role="tablist" data-group="periods">
+      <button class="tab" role="tab" aria-selected="true" data-tab="curl">curl</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="js">JavaScript</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="csv">CSV</button>
+    </div>
+    <div class="panel" data-group="periods" data-tab="curl"><pre><code>curl -H "X-Api-Key: ВАШ_КЛЮЧ" \
+  "https://alerts.starsam.net/periods?month=2026-11&amp;location=75"</code></pre></div>
+    <div class="panel" data-group="periods" data-tab="js" hidden><pre><code>const res = await fetch('https://alerts.starsam.net/periods?month=2026-11&amp;region=14&amp;level=red', {
+  headers: { 'X-Api-Key': 'ВАШ_КЛЮЧ' },
+});
+if (!res.ok) throw new Error(`${res.status}: ${(await res.json()).error}`);
+const rows = await res.json();
+const minutes = rows.reduce((sum, row) =&gt; sum + (row.duration_min ?? 0), 0);</code></pre></div>
+    <div class="panel" data-group="periods" data-tab="csv" hidden><pre><code>curl -H "X-Api-Key: ВАШ_КЛЮЧ" -o alerts-2026-11.csv \
+  "https://alerts.starsam.net/periods?month=2026-11&amp;location=75&amp;format=csv"</code></pre></div>
+
+    <h3>Відповідь</h3>
+    <div class="panel" data-group="periods" data-tab="csv" hidden>
+      <p>Файл <code>alerts-2026-11.csv</code>: UTF-8 з BOM, роздільник <code>;</code>, без полів <code>started_at</code> /
+        <code>finished_at</code> (час — київський, у <code>started_local</code> / <code>finished_local</code>).</p>
+<pre><code>region_uid;location_uid;location_title;location_type;level;month;day;started_local;finished_local;duration_min;alert_id;closed_by
+14;75;Бучанський район;raion;yellow;2026-11;2026-11-01;2026-11-01 00:41:26;2026-11-01 04:50:49;249;315511;api
+14;75;Бучанський район;raion;yellow;2026-11;2026-11-01;2026-11-01 05:10:34;2026-11-01 05:26:30;16;315556;api</code></pre>
+    </div>
+    <div class="panel" data-group="periods" data-tab="curl js">
+<pre><code>[
+  {
+    "region_uid": 14,
+    "location_uid": 75,
+    "location_title": "Бучанський район",
+    "location_type": "raion",
+    "level": "yellow",
+    "month": "2026-11",
+    "day": "2026-11-01",
+    "started_local": "2026-11-01 00:41:26",
+    "finished_local": "2026-11-01 04:50:49",
+    "duration_min": 249,
+    "alert_id": 315511,
+    "closed_by": "api",
+    "started_at": "2026-10-31T22:41:26.714Z",
+    "finished_at": "2026-11-01T02:50:49.000Z"
+  }
+]</code></pre>
+    </div>
+    <p><code>duration_min</code> — тривалість цього відрізка в хвилинах (округлено); <code>alert_id</code> — номер тривоги,
+      однаковий для всіх її відрізків; <code>closed_by: "stale_30min"</code> — джерело не дало кінця понад 3 доби,
+      тривогу умовно закрито як початок + 30 хв.</p>
+  </div>
+
+  <!-- 2. summary -->
+  <div class="card">
+    <div class="endpoint"><span class="method">GET</span><span class="path">/summary</span></div>
+    <p>Підсумок за місяць: <b>кількість тривог і години</b> по регіонах (або по територіях) окремо для кожного рівня
+      та разом (<code>all</code>). Години рахуються з об'єднанням перекриттів: якщо тривога в районі й у громаді йшли
+      одночасно, час не подвоюється. Тривога, що ще триває, рахується до поточного моменту.</p>
+    <div class="table-wrap"><table>
+      <tr><th>Параметр</th><th>Опис</th></tr>
+      <tr><td><code>month</code></td><td><b>Обов'язковий.</b> Місяць <code>YYYY-MM</code></td></tr>
+      <tr><td><code>region</code></td><td>UID регіону або список через кому</td></tr>
+      <tr><td><code>location</code></td><td>UID території або список через кому</td></tr>
+      <tr><td><code>by</code></td><td><code>location</code> — розбити підсумок по територіях</td></tr>
+    </table></div>
+
+    <div class="tabs" role="tablist" data-group="summary">
+      <button class="tab" role="tab" aria-selected="true" data-tab="curl">curl</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="js">JavaScript</button>
+    </div>
+    <div class="panel" data-group="summary" data-tab="curl"><pre><code>curl -H "X-Api-Key: ВАШ_КЛЮЧ" \
+  "https://alerts.starsam.net/summary?month=2026-11&amp;region=31"
+
+# по районах Київської області
+curl -H "X-Api-Key: ВАШ_КЛЮЧ" \
+  "https://alerts.starsam.net/summary?month=2026-11&amp;region=14&amp;by=location"</code></pre></div>
+    <div class="panel" data-group="summary" data-tab="js" hidden><pre><code>const res = await fetch('https://alerts.starsam.net/summary?month=2026-11&amp;region=31', {
+  headers: { 'X-Api-Key': 'ВАШ_КЛЮЧ' },
+});
+const rows = await res.json();
+const total = rows.find((row) =&gt; row.level === 'all');
+console.log(`${total.alerts} тривог, ${total.hours} год`);</code></pre></div>
+
+    <h3>Відповідь</h3>
+<pre><code>[
+  { "region_uid": 31, "level": "all",    "alerts": 90, "hours": 76.98, "still_active": 0 },
+  { "region_uid": 31, "level": "red",    "alerts": 12, "hours": 18.28, "still_active": 0 },
+  { "region_uid": 31, "level": "yellow", "alerts": 78, "hours": 58.7,  "still_active": 0 }
+]</code></pre>
+    <p><code>alerts</code> — кількість різних тривог; <code>hours</code> — години; <code>still_active</code> — скільки
+      ще триває. З <code>by=location</code> у кожному рядку є ще <code>location_uid</code> і <code>location_title</code>.</p>
+  </div>
+
+  <!-- 3. 1c -->
+  <div class="card">
+    <div class="endpoint"><span class="method">GET</span><span class="path">/1c/alerts</span></div>
+    <p>Вигрузка для 1С: <b>рядок на кожну добу тривоги</b> з полями кирилицею. <code>НомерТревоги</code> — порядковий
+      номер тривоги в межах території й доби (1, 2, 3…). Час — київський, без часового поясу.
+      Шматок тривоги, що перетнув північ, закінчується о <code>00:00:00</code> наступної доби.</p>
+    <div class="table-wrap"><table>
+      <tr><th>Параметр</th><th>Опис</th></tr>
+      <tr><td><code>month</code></td><td><b>Обов'язковий.</b> Місяць <code>YYYY-MM</code></td></tr>
+      <tr><td><code>region</code></td><td>UID регіону або список через кому</td></tr>
+      <tr><td><code>location</code></td><td>UID території або список через кому</td></tr>
+      <tr><td><code>format</code></td><td><code>csv</code> — файл замість JSON</td></tr>
+    </table></div>
+
+    <div class="tabs" role="tablist" data-group="onec">
+      <button class="tab" role="tab" aria-selected="true" data-tab="1c">1С</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="curl">curl</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="csv">CSV</button>
+    </div>
+    <div class="panel" data-group="onec" data-tab="1c"><pre><code>Функция ЗагрузитьТревоги(Месяц, КлючAPI, Территории = "") Экспорт
+
+	Адрес = "/1c/alerts?month=" + Формат(Месяц, "ДФ=yyyy-MM");
+	Если ЗначениеЗаполнено(Территории) Тогда
+		Адрес = Адрес + "&amp;location=" + Территории; // например "75,76"
+	КонецЕсли;
+
+	Соединение = Новый HTTPСоединение("alerts.starsam.net", 443, , , , 60, Новый ЗащищенноеСоединениеOpenSSL);
+	Заголовки = Новый Соответствие;
+	Заголовки.Вставить("X-Api-Key", КлючAPI);
+	Ответ = Соединение.Получить(Новый HTTPЗапрос(Адрес, Заголовки));
+
+	Текст = Ответ.ПолучитьТелоКакСтроку("UTF-8");
+	Если Ответ.КодСостояния &lt;&gt; 200 Тогда
+		ВызватьИсключение "Сервис тревог: " + Ответ.КодСостояния + " " + Текст;
+	КонецЕсли;
+
+	Чтение = Новый ЧтениеJSON;
+	Чтение.УстановитьСтроку(Текст);
+	Строки = ПрочитатьJSON(Чтение); // Массив из Структура
+	Чтение.Закрыть();
+
+	Для Каждого Стр Из Строки Цикл
+		Начало = XMLЗначение(Тип("Дата"), Стр.Начало);
+		Конец  = ?(Стр.Конец = Неопределено, Неопределено, XMLЗначение(Тип("Дата"), Стр.Конец));
+		// Стр.ПериодМесяц, Стр.ДеньМесяца, Стр.КодТеритории, Стр.ТипСобытия, Стр.НомерТревоги
+	КонецЦикла;
+
+	Возврат Строки;
+
+КонецФункции</code></pre></div>
+    <div class="panel" data-group="onec" data-tab="curl" hidden><pre><code>curl -H "X-Api-Key: ВАШ_КЛЮЧ" \
+  "https://alerts.starsam.net/1c/alerts?month=2026-11&amp;location=75"</code></pre></div>
+    <div class="panel" data-group="onec" data-tab="csv" hidden><pre><code>curl -H "X-Api-Key: ВАШ_КЛЮЧ" -o alerts-1c-2026-11.csv \
+  "https://alerts.starsam.net/1c/alerts?month=2026-11&amp;location=75&amp;format=csv"</code></pre></div>
+
+    <h3>Відповідь</h3>
+    <div class="panel" data-group="onec" data-tab="csv" hidden>
+      <p>Файл <code>alerts-1c-2026-11.csv</code>: UTF-8 з BOM, роздільник <code>;</code>.</p>
+<pre><code>ПериодМесяц;ДеньМесяца;КодТеритории;ТипСобытия;НомерТревоги;Начало;Конец
+2026-11-01T00:00:00;1;75;Тревога;1;2026-11-01T00:41:26;2026-11-01T04:50:49
+2026-11-01T00:00:00;1;75;Тревога;2;2026-11-01T05:10:34;2026-11-01T05:26:30</code></pre>
+    </div>
+    <div class="panel" data-group="onec" data-tab="1c curl">
+<pre><code>[
+  {
+    "ПериодМесяц": "2026-11-01T00:00:00",
+    "ДеньМесяца": 1,
+    "КодТеритории": 75,
+    "ТипСобытия": "Тревога",
+    "НомерТревоги": 1,
+    "Начало": "2026-11-01T00:41:26",
+    "Конец": "2026-11-01T04:50:49"
+  },
+  {
+    "ПериодМесяц": "2026-11-01T00:00:00",
+    "ДеньМесяца": 1,
+    "КодТеритории": 75,
+    "ТипСобытия": "Тревога",
+    "НомерТревоги": 2,
+    "Начало": "2026-11-01T05:10:34",
+    "Конец": "2026-11-01T05:26:30"
+  }
+]</code></pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Регіони</h2>
+  <p>UID регіонів для параметра <code>region</code>. UID районів, громад і міст (для <code>location</code>) — у
+    <a href="https://docs.google.com/spreadsheets/d/1XnTOzcPHd1LZUrarR1Fk43FUyl8Ae6a6M7pcwDRjNdA" rel="noopener">таблиці alerts.in.ua</a>
+    або в полі <code>location_uid</code> відповідей <code>/periods</code>.</p>
+  <ul class="regions">
+    <li><code>31</code> м. Київ</li>
+    <li><code>4</code> Вінницька</li>
+    <li><code>8</code> Волинська</li>
+    <li><code>9</code> Дніпропетровська</li>
+    <li><code>28</code> Донецька</li>
+    <li><code>10</code> Житомирська</li>
+    <li><code>11</code> Закарпатська</li>
+    <li><code>12</code> Запорізька</li>
+    <li><code>13</code> Івано-Франківська</li>
+    <li><code>14</code> Київська</li>
+    <li><code>15</code> Кіровоградська</li>
+    <li><code>27</code> Львівська</li>
+    <li><code>17</code> Миколаївська</li>
+    <li><code>18</code> Одеська</li>
+    <li><code>19</code> Полтавська</li>
+    <li><code>5</code> Рівненська</li>
+    <li><code>20</code> Сумська</li>
+    <li><code>21</code> Тернопільська</li>
+    <li><code>22</code> Харківська</li>
+    <li><code>23</code> Херсонська</li>
+    <li><code>3</code> Хмельницька</li>
+    <li><code>24</code> Черкаська</li>
+    <li><code>26</code> Чернівецька</li>
+    <li><code>25</code> Чернігівська</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Помилки</h2>
+  <p>Тіло помилки — <code>{"error": "опис"}</code>.</p>
+  <div class="table-wrap"><table>
+    <tr><th>Код</th><th>Причина</th></tr>
+    <tr><td><code>400</code></td><td>Невірний параметр: місяць не у форматі <code>YYYY-MM</code>, UID не число, немає жодного фільтра</td></tr>
+    <tr><td><code>401</code></td><td>Немає ключа, ключ невідомий або вимкнений</td></tr>
+    <tr><td><code>403</code></td><td>Ключ не дає доступу до цієї команди</td></tr>
+    <tr><td><code>404</code></td><td>Немає такої команди</td></tr>
+    <tr><td><code>429</code></td><td>Понад 6 запитів за хвилину — дочекайтеся <code>Retry-After</code> секунд</td></tr>
+  </table></div>
+</section>
+
+<footer>
+  <p>Джерело даних — <a href="https://alerts.in.ua" rel="noopener">alerts.in.ua</a>. Дані надаються «як є», без гарантій
+    повноти й безперервності; не використовуйте сервіс для критичної інфраструктури чи сповіщення про небезпеку.
+    Стан сервісу: <a href="/health">/health</a>.</p>
+  <p>Для підрахунку відвідувань сайт використовує Google Analytics.</p>
+  <p>Питання, пропозиції, помилка в даних? <a href="#" data-open-contact>Написати автору</a>.</p>
+</footer>
+
+</main>
+
+<dialog id="request-dialog" aria-labelledby="request-title">
+  <form class="modal" id="request-form" novalidate>
+    <h2 id="request-title">Заявка на ключ API</h2>
+    <p>Ключ безкоштовний. Розглянемо заявку й надішлемо ключ на вказаний email.</p>
+
+    <label for="rq-name">Ім'я</label>
+    <input id="rq-name" name="name" required maxlength="100" autocomplete="name">
+
+    <label for="rq-company">Компанія <span>(необов'язково)</span></label>
+    <input id="rq-company" name="company" maxlength="150" autocomplete="organization">
+
+    <label for="rq-purpose">Для чого</label>
+    <textarea id="rq-purpose" name="purpose" required maxlength="1000"
+              placeholder="Напр.: звіти про простої в 1С по районах Київської області"></textarea>
+
+    <label for="rq-email">Email</label>
+    <input id="rq-email" name="email" type="email" required maxlength="200" autocomplete="email">
+
+    <!-- пастка для ботів: людина цього поля не бачить -->
+    <div class="hp" aria-hidden="true"><label for="rq-website">Сайт</label>
+      <input id="rq-website" name="website" tabindex="-1" autocomplete="off"></div>
+
+    <p class="consent">Надсилаючи заявку, ви погоджуєтеся на обробку ваших персональних даних (ім'я, компанія, email)
+      для розгляду заявки та зв'язку з вами щодо ключа API.</p>
+
+    <div class="status" id="request-status" role="status"></div>
+    <div class="actions">
+      <button class="btn secondary" type="button" id="request-cancel">Скасувати</button>
+      <button class="btn" type="submit" id="request-submit">Надіслати</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="contact-dialog" aria-labelledby="contact-title">
+  <form class="modal" id="contact-form" novalidate>
+    <h2 id="contact-title">Написати автору</h2>
+    <p>Питання, пропозиція, помилка в даних — пишіть, відповім.</p>
+
+    <label for="ct-name">Ім'я</label>
+    <input id="ct-name" name="name" required maxlength="100" autocomplete="name">
+
+    <label for="ct-contact">Email або Telegram для відповіді</label>
+    <input id="ct-contact" name="contact" required maxlength="200" placeholder="name@example.com або @username">
+
+    <label for="ct-message">Повідомлення</label>
+    <textarea id="ct-message" name="message" required maxlength="3000"></textarea>
+
+    <!-- пастка для ботів: людина цього поля не бачить -->
+    <div class="hp" aria-hidden="true"><label for="ct-website">Сайт</label>
+      <input id="ct-website" name="website" tabindex="-1" autocomplete="off"></div>
+
+    <p class="consent">Надсилаючи повідомлення, ви погоджуєтеся на обробку ваших персональних даних (ім'я, контакт)
+      для відповіді вам.</p>
+
+    <div class="status" id="contact-status" role="status"></div>
+    <div class="actions">
+      <button class="btn secondary" type="button" id="contact-cancel">Скасувати</button>
+      <button class="btn" type="submit" id="contact-submit">Надіслати</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="result-dialog" aria-labelledby="result-title">
+  <div class="modal result" id="result-box">
+    <div class="icon" id="result-icon" aria-hidden="true">✓</div>
+    <h2 id="result-title"></h2>
+    <div id="result-text"></div>
+    <div class="actions">
+      <button class="btn" type="button" id="result-ok">Зрозуміло</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+  // окреме вікно з результатом: успіх - замість форми; помилка - поверх форми (введене не губиться)
+  const resultDialog = document.getElementById('result-dialog');
+  const showResult = ({ ok, title, paragraphs }) => {
+    document.getElementById('result-box').classList.toggle('error', !ok);
+    document.getElementById('result-icon').textContent = ok ? '✓' : '!';
+    document.getElementById('result-title').textContent = title;
+    const text = document.getElementById('result-text');
+    text.replaceChildren(...paragraphs.map((line) => {
+      const p = document.createElement('p');
+      p.textContent = line;
+      return p;
+    }));
+    resultDialog.showModal();
+    document.getElementById('result-ok').focus();
+  };
+  document.getElementById('result-ok').addEventListener('click', () => resultDialog.close());
+  resultDialog.addEventListener('click', (event) => { if (event.target === resultDialog) resultDialog.close(); });
+
+  /**
+   * Модальна форма: відкриття кнопками [data-open-<name>], перевірка полів, POST на url,
+   * результат - в окремому вікні (успіх - форма закривається й очищається; помилка - форма лишається).
+   */
+  /** Подія для Google Analytics; без персональних даних з форм. Якщо аналітика заблокована - нічого не робить. */
+  const track = (event) => {
+    try { if (typeof window.gtag === 'function') window.gtag('event', event); } catch { /* ігноруємо */ }
+  };
+
+  const setupFormDialog = ({ name, url, invalidText, failTitle, tooManyText, success }) => {
+    const dialog = document.getElementById(`${name}-dialog`);
+    const form = document.getElementById(`${name}-form`);
+    const statusLine = document.getElementById(`${name}-status`);
+    const submitButton = document.getElementById(`${name}-submit`);
+    const setStatus = (text, isError) => {
+      statusLine.textContent = text;
+      statusLine.classList.toggle('error', Boolean(isError));
+    };
+
+    document.querySelectorAll(`[data-open-${name}]`).forEach((el) => {
+      el.addEventListener('click', (event) => {
+        event.preventDefault();
+        setStatus('');
+        dialog.showModal();
+        track(`${name}_form_open`);
+        form.querySelector('input').focus();
+      });
+    });
+    document.getElementById(`${name}-cancel`).addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!form.checkValidity()) {
+        setStatus(invalidText, true);
+        form.reportValidity();
+        return;
+      }
+      const data = Object.fromEntries(new FormData(form));
+      submitButton.disabled = true;
+      setStatus('Надсилаємо…');
+      let failure = null;
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (res.status === 429) failure = tooManyText;
+        else if (!res.ok) failure = 'Сервер не прийняв дані. Перевірте поля й спробуйте ще раз.';
+      } catch {
+        failure = "Немає зв'язку з сервером. Перевірте інтернет і спробуйте ще раз.";
+      } finally {
+        submitButton.disabled = false;
+        setStatus('');
+      }
+
+      if (failure) {
+        showResult({ ok: false, title: failTitle, paragraphs: [failure] });
+        return;
+      }
+      form.reset();
+      dialog.close();
+      showResult({ ok: true, ...success(data) });
+      track(`${name}_form_sent`);
+    });
+  };
+
+  // заявка на ключ
+  setupFormDialog({
+    name: 'request',
+    url: '/key-requests',
+    invalidText: "Заповніть ім'я, мету та коректний email.",
+    failTitle: 'Заявку не надіслано',
+    tooManyText: 'З вашої адреси надіслано забагато заявок. Спробуйте через годину.',
+    success: (data) => ({
+      title: 'Заявку надіслано',
+      paragraphs: [
+        'Дякуємо! Ми розглянемо заявку найближчим часом.',
+        `Ключ API надішлемо на ${data.email}. Якщо листа немає, перевірте папку «Спам».`,
+      ],
+    }),
+  });
+
+  // написати автору
+  setupFormDialog({
+    name: 'contact',
+    url: '/contact',
+    invalidText: "Заповніть ім'я, контакт для відповіді й повідомлення.",
+    failTitle: 'Повідомлення не надіслано',
+    tooManyText: 'З вашої адреси надіслано забагато повідомлень. Спробуйте через годину.',
+    success: (data) => ({
+      title: 'Повідомлення надіслано',
+      paragraphs: ['Дякую! Відповім на ' + data.contact + ' найближчим часом.'],
+    }),
+  });
+</script>
+<script>
+  // вкладки прикладів
+  document.querySelectorAll('.tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const group = tab.parentElement.dataset.group;
+      document.querySelectorAll(`.tabs[data-group="${group}"] .tab`).forEach((t) => {
+        t.setAttribute('aria-selected', String(t === tab));
+      });
+      document.querySelectorAll(`.panel[data-group="${group}"]`).forEach((panel) => {
+        // data-tab панелі може містити кілька вкладок через пробіл: "curl js"
+        panel.hidden = !panel.dataset.tab.split(' ').includes(tab.dataset.tab);
+      });
+    });
+  });
+  // кнопка "копіювати" на кожному блоці коду
+  document.querySelectorAll('pre').forEach((pre) => {
+    const button = document.createElement('button');
+    button.className = 'copy';
+    button.type = 'button';
+    button.textContent = 'копіювати';
+    button.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(pre.querySelector('code').innerText);
+        button.textContent = 'скопійовано';
+      } catch {
+        button.textContent = 'не вдалося';
+      }
+      setTimeout(() => { button.textContent = 'копіювати'; }, 1500);
+    });
+    pre.appendChild(button);
+  });
+</script>
+<script>
+  // графік «тривоги за 30 днів»: ранжовані горизонтальні стовпчики, одна серія (години по регіонах)
+  (() => {
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const ROW = 26;          // висота рядка
+    const BAR = 12;          // товщина стовпчика (тонкий, з повітрям у рядку)
+    const AXIS = 24;         // місце під шкалою
+    const VALUE_SPACE = 64;  // місце під підпис значення в кінці найбільшого стовпчика
+    const section = document.getElementById('stats');
+    const chart = document.getElementById('stats-chart');
+    let stats = null;
+
+    const shortTitle = (title) => title.replace(' область', '');
+    const formatHours = (h) => h.toLocaleString('uk-UA', { maximumFractionDigits: h < 10 ? 1 : 0 });
+    const formatInt = (n) => n.toLocaleString('uk-UA');
+    const formatDay = (iso) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
+    const el = (name, attrs = {}, parent) => {
+      const node = document.createElementNS(SVG_NS, name);
+      for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+      if (parent) parent.append(node);
+      return node;
+    };
+
+    /** «Кругла» шкала: крок 1/2/5 × 10^k, ~4 поділки */
+    const niceTicks = (max) => {
+      if (max <= 0) return [0, 1];
+      const raw = max / 4;
+      const pow = 10 ** Math.floor(Math.log10(raw));
+      const step = [1, 2, 5, 10].map((m) => m * pow).find((s) => s >= raw);
+      const ticks = [];
+      for (let t = 0; t <= max + step * 0.001; t += step) ticks.push(t);
+      if (ticks[ticks.length - 1] < max) ticks.push(ticks[ticks.length - 1] + step);
+      return ticks;
+    };
+
+    /** Стовпчик: квадратний біля осі, 4px заокруглення на кінці з даними */
+    const barPath = (x, y, w, h) => {
+      const r = Math.min(4, w / 2, h / 2);
+      if (w <= 0) return '';
+      return `M${x},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h - r}Q${x + w},${y + h} ${x + w - r},${y + h}H${x}Z`;
+    };
+
+    const tip = document.createElement('div');
+    tip.className = 'chart-tip';
+    tip.hidden = true;
+    const showTip = (region, event, rowRect) => {
+      tip.replaceChildren();
+      const name = document.createElement('b');
+      name.textContent = region.title;
+      const hours = document.createElement('div');
+      hours.textContent = `${formatHours(region.hours)} год, коли тривога була хоч десь в області`;
+      const red = document.createElement('span');
+      red.textContent = `з них червоний рівень — ${formatHours(region.red_hours)} год`;
+      const alerts = document.createElement('div');
+      alerts.textContent = `${formatInt(region.alerts)} тривог у районах і громадах`;
+      tip.append(name, hours, red, alerts);
+      tip.hidden = false;
+      const box = chart.getBoundingClientRect();
+      const anchorX = event && 'clientX' in event && event.clientX ? event.clientX - box.left : rowRect.left - box.left + 120;
+      const anchorY = rowRect.top - box.top;
+      const left = Math.min(Math.max(anchorX + 12, 0), box.width - tip.offsetWidth);
+      const top = anchorY - tip.offsetHeight - 6 < 0 ? anchorY + ROW + 6 : anchorY - tip.offsetHeight - 6;
+      tip.style.left = `${Math.max(0, left)}px`;
+      tip.style.top = `${top}px`;
+    };
+    const hideTip = () => { tip.hidden = true; };
+
+    const render = () => {
+      if (!stats) return;
+      const regions = stats.regions;
+      const width = Math.max(chart.clientWidth, 280);
+      const labelWidth = Math.min(150, Math.round(width * 0.36));
+      const plotWidth = width - labelWidth - VALUE_SPACE;
+      const max = Math.max(...regions.map((r) => r.hours), 0);
+      const ticks = niceTicks(max);
+      const scaleMax = ticks[ticks.length - 1];
+      const x = (h) => labelWidth + (scaleMax ? (h / scaleMax) * plotWidth : 0);
+      const height = regions.length * ROW + AXIS;
+
+      const svg = el('svg', { viewBox: `0 0 ${width} ${height}`, role: 'group',
+        'aria-label': `Години тривог за ${stats.days} днів по регіонах, найбільше — ${regions[0]?.title ?? ''}` });
+
+      // вертикальні лінії сітки й шкала внизу
+      for (const t of ticks) {
+        el('line', { class: 'grid', x1: x(t), x2: x(t), y1: 0, y2: regions.length * ROW }, svg);
+        const label = el('text', { class: 'tick', x: x(t), y: height - 6, 'text-anchor': 'middle' }, svg);
+        label.textContent = formatInt(t);
+      }
+
+      regions.forEach((region, i) => {
+        const y = i * ROW;
+        const row = el('g', { class: 'row', tabindex: 0,
+          'aria-label': `${region.title}: ${formatHours(region.hours)} год, червоний ${formatHours(region.red_hours)} год, ${region.alerts} тривог` }, svg);
+        el('rect', { class: 'hit', x: 0, y, width, height: ROW, rx: 4 }, row);
+        const label = el('text', { class: 'label', x: labelWidth - 8, y: y + ROW / 2 + 4, 'text-anchor': 'end' }, row);
+        label.textContent = shortTitle(region.title);
+        el('path', { class: 'bar', d: barPath(labelWidth, y + (ROW - BAR) / 2, x(region.hours) - labelWidth, BAR) }, row);
+        if (i === 0 && region.hours > 0) {
+          const value = el('text', { class: 'value', x: x(region.hours) + 6, y: y + ROW / 2 + 4 }, row);
+          value.textContent = `${formatHours(region.hours)} год`;
+        }
+        const rowRect = () => row.getBoundingClientRect();
+        row.addEventListener('pointerenter', (e) => showTip(region, e, rowRect()));
+        row.addEventListener('pointermove', (e) => showTip(region, e, rowRect()));
+        row.addEventListener('pointerleave', hideTip);
+        row.addEventListener('focus', () => showTip(region, null, rowRect()));
+        row.addEventListener('blur', hideTip);
+      });
+
+      chart.replaceChildren(svg, tip);
+    };
+
+    const renderTable = () => {
+      const tbody = document.getElementById('stats-table');
+      tbody.replaceChildren(...stats.regions.map((region) => {
+        const tr = document.createElement('tr');
+        const cells = [region.title, formatHours(region.hours), formatHours(region.red_hours), formatInt(region.alerts)];
+        cells.forEach((text, i) => {
+          const td = document.createElement('td');
+          if (i > 0) td.className = 'num';
+          td.textContent = text;
+          tr.append(td);
+        });
+        return tr;
+      }));
+    };
+
+    fetch('/stats')
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then((data) => {
+        if (!data.regions?.length) return;
+        stats = data;
+        document.getElementById('stats-sub').textContent =
+          `Години, коли тривога була хоч десь в області (у будь-якому районі чи громаді), ${formatDay(data.from)}–${formatDay(data.to)}. ` +
+          'Наведіть на рядок, щоб побачити деталі.';
+        section.hidden = false;
+        render();
+        renderTable();
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(render, 150);
+        });
+      })
+      .catch(() => { /* статистика недоступна - секція лишається прихованою */ });
+  })();
+</script>
+</body>
+</html>
