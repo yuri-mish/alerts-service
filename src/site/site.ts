@@ -93,6 +93,13 @@ export const createSitePages = (publicUrl: string): Map<string, StaticPage> => {
       '/favicon.svg',
       { contentType: 'image/svg+xml', body: readFileSync(fileUrl('favicon.svg')), cacheControl: ONE_HOUR },
     ],
+    // превʼю посилання в соцмережах і месенджерах (og:image, 1200×630)
+    [
+      '/og-image.png',
+      { contentType: 'image/png', body: readFileSync(fileUrl('og-image.png')), cacheControl: ONE_HOUR },
+    ],
+    // фон шапки лендінгу (сцена з сиреною, без тексту)
+    ['/hero-bg.jpg', { contentType: 'image/jpeg', body: readFileSync(fileUrl('hero-bg.jpg')), cacheControl: ONE_HOUR }],
     [
       `/${GOOGLE_VERIFICATION_FILE}`,
       {

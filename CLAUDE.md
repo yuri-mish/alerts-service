@@ -38,6 +38,8 @@
   лог `~/backups/alerts/backup.log`. Працює (підтверджено 13 і 14.11.2026).
 - Нічне оновлення за розкладом (03:30 Київ, `trigger: schedule` у `/runs`) підтверджено 13 і 14.11.2026: `ok`, тоді ще 8 регіонів, ~3,5 хв.
 - `duration_min` — `integer` (хвилини, округлення).
+- **Нагадати користувачеві з 01.12.2026:** видалити стару Postgres 16 (`sudo pg_dropcluster 16 main --stop`, зупинена на
+  порту 5433). Спершу переконатись, що Postgres 18 працює без проблем (нічні прогони `ok`, бекапи, `file_api`).
 
 ## Вимоги користувача (вже реалізовані — не змінювати без запиту)
 - Node 24 + вбудований TypeScript (type stripping): `node src/main.ts`, `tsc` лише для перевірки типів.
@@ -81,7 +83,7 @@
   Захист від підбору: 5 невдалих ключів з IP (`X-Real-IP`) → блок до кінця годинного вікна (429), навіть з правильним
   ключем; запити без ключа не рахуються. CORS `*`. На `GET /` — лендінг `src/site/landing.html` (опис сервісу, `/periods`, `/summary`, `/1c/alerts` з прикладами
   curl/JS/1С), без ключа; при зміні API/лімітів/регіонів — оновлювати і його. Вгорі плашка «безкоштовно, тестовий режим».
-  Для пошуковиків (`src/site/site.ts`): `/robots.txt` (закриває шляхи API, крім `/stats` — інакше Google рендерить лендінг без графіка), `/sitemap.xml`, `/favicon.svg`, canonical,
+  Для пошуковиків (`src/site/site.ts`): `/robots.txt` (закриває шляхи API, крім `/stats` — інакше Google рендерить лендінг без графіка), `/sitemap.xml`, `/favicon.svg`, `/og-image.png` (og:image 1200×630), `/hero-bg.jpg` (фон шапки лендінгу), canonical,
   OG-теги, JSON-LD (WebSite + WebAPI); статичні сторінки відповідають і на HEAD. Google Search Console — за користувачем.
 - Заявка на ключ: модальне вікно на лендінгу (Ім'я, Компанія — необов'язково, Для чого, Email) → `POST /key-requests`
   (без ключа, 3 з IP/год за `X-Real-IP`, приховане поле-пастка `website`) → таблиця `key_requests`
@@ -122,7 +124,7 @@
   Нові зміни схеми — новим файлом `002_...sql`; `deploy.sh` перед заливкою чистить `migrations/src/test/scripts` на VPS.
 - `src/` за теками (16.11.2026): у корені — лише точки входу (`main.ts`, `migrate.ts`, `sync-once.ts`, `rebuild-periods.ts`);
   `core/` (config, db, log, validation), `sync/` (alerts-api, sync, scheduler), `http/` (server, auth, common, openapi, handlers/),
-  `site/` (site.ts, stats.ts, landing.html, docs.html, admin.html, favicon.svg), `keys/` (api-keys, key-requests),
+  `site/` (site.ts, stats.ts, landing.html, docs.html, admin.html, favicon.svg, og-image.png, hero-bg.jpg), `keys/` (api-keys, key-requests),
   `notify/` (telegram, contact, monitor).
 - `src/sync/alerts-api.ts` — клієнт API + `parseHistory` (нормалізація).
 - `src/sync/sync.ts` — `applyAlerts` (пакетна вставка нових, оновлення змінених, без запитів у циклі для незмінених), `closeStale`, `rebuildPeriods` (розрізання в SQL
@@ -167,12 +169,12 @@
 ## VPS
 - **Репозиторій публічний** — адресу, порт і логін SSH, деталі Postgres/nginx та інших сервісів VPS тримати лише в
   `CLAUDE.local.md` і `.env.deploy` (обидва в `.gitignore`), не в файлах під git.
-- `sudo` вимагає пароль — команди з sudo готує Claude (скрипт), запускає користувач. Root по SSH закритий.
+- Про `sudo` на VPS — див. `CLAUDE.local.md`.
 - **На сервері щось вбиває (SIGKILL) процеси з паролем у рядку аргументів** — паролі/токени передавати через stdin
   або env, ніколи аргументом команди.
 - Проєкт: `~/projects/alerts` (тут `.env.db` з `DATABASE_URL` і `.env` з `ALERTS_TOKEN`, `API_KEY`, `HOST`, `PORT`, `SYNC_TIME`; права 600).
   Секрети не виводити в консоль/чат.
-- Postgres 16 на хості (не в Docker); контейнер у `network_mode: host`. nginx → `127.0.0.1:6020`, Let's Encrypt.
+- Postgres **18** на хості (не в Docker; оновлено з 16 — 17.11.2026 через `pg_upgradecluster`); контейнер у `network_mode: host`. nginx → `127.0.0.1:6020`, Let's Encrypt.
 
 ## Розгортання / перевірка
 Скрипт: `npm run deploy` (або `deploy:fast` без тестів; `-- --logs` — стежити за логами) = `bash deploy.sh`:

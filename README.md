@@ -50,7 +50,7 @@ curl -H "X-Api-Key: $KEY" -X POST "https://alerts.starsam.net/sync?wait=1"
 
 ## Розгортання (VPS, ~/projects/alerts)
 
-- `.env.db` - `DATABASE_URL` (Postgres 16 на хості), `.env` - `ALERTS_TOKEN`, `API_KEY`, `PORT=6020`, `SYNC_TIME=03:30`, необов'язково `TIME_ZONE` (IANA, за замовчуванням `Europe/Kyiv`): за нею рахуються доби, місяці, `SYNC_TIME` і час у відповідях.
+- `.env.db` - `DATABASE_URL` (Postgres 18 на хості), `.env` - `ALERTS_TOKEN`, `API_KEY`, `PORT=6020`, `SYNC_TIME=03:30`, необов'язково `TIME_ZONE` (IANA, за замовчуванням `Europe/Kyiv`): за нею рахуються доби, місяці, `SYNC_TIME` і час у відповідях.
 - `docker compose up -d --build` - контейнер у host-мережі, слухає `127.0.0.1:6020`, nginx -> https.
 - Міграції застосовуються при старті. Разовий прогін: `docker compose run --rm alerts node src/sync-once.ts`.
 - Тести (потрібен Postgres, працюють в окремій схемі): `set -a; . ./.env.db; set +a; npm test`.

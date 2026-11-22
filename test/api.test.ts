@@ -246,6 +246,8 @@ test('публічне API: клієнтський ключ - лише чита�
       /<loc>https:\/\/alerts\.starsam\.net\/<\/loc><lastmod>\d{4}-\d\d-\d\d<\/lastmod>/,
     );
     assert.equal((await fetch(`${base}/favicon.svg`)).headers.get('content-type'), 'image/svg+xml');
+    assert.equal((await fetch(`${base}/og-image.png`)).headers.get('content-type'), 'image/png');
+    assert.equal((await fetch(`${base}/hero-bg.jpg`)).headers.get('content-type'), 'image/jpeg');
     const head = await fetch(`${base}/`, { method: 'HEAD' });
     assert.equal(head.status, 200);
     assert.match(head.headers.get('content-type') ?? '', /text\/html/);
