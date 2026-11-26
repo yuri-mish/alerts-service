@@ -514,10 +514,13 @@ console.log(`${total.alerts} тривог, ${total.hours} год`);</code></pre>
       <button class="tab" role="tab" aria-selected="false" data-tab="curl">curl</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="csv">CSV</button>
     </div>
-    <div class="panel" data-group="onec" data-tab="1c"><pre><code>Функция ЗагрузитьТревоги(Месяц, КлючAPI, Территории) Экспорт
+    <div class="panel" data-group="onec" data-tab="1c"><pre><code>Функция ЗагрузитьТревоги(Месяц, КлючAPI, Территории = "") Экспорт
 
-	// Территории обязательны: коды через запятую, например "75,76"
-	Адрес = "/1c/alerts?month=" + Формат(Месяц, "ДФ=yyyy-MM") + "&amp;location=" + Территории;
+	// Территории - коды через запятую, например "75,76"; пусто - все области
+	Адрес = "/1c/alerts?month=" + Формат(Месяц, "ДФ=yyyy-MM");
+	Если ЗначениеЗаполнено(Территории) Тогда
+		Адрес = Адрес + "&amp;location=" + Территории;
+	КонецЕсли;
 
 	Соединение = Новый HTTPСоединение("alerts.starsam.net", 443, , , , 60, Новый ЗащищенноеСоединениеOpenSSL);
 	Заголовки = Новый Соответствие;
