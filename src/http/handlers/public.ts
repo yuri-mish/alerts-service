@@ -76,16 +76,21 @@ export const createPublicRouter = ({ ctx, db, limiters, publicStats }: Deps): Ro
     res.json({ ok: true });
   };
 
+  // файли Swagger UI для сторінки /docs (сама сторінка - серед сторінок сайту)
+  const swaggerAssets = express.static(SWAGGER_UI_DIR, { maxAge: '1d', index: false });
+
   const router = express.Router();
   // лендінг, robots.txt, sitemap.xml, іконка, адмінка (дані адмінки - лише з ключем)
   for (const [path, page] of createSitePages(config.publicUrl)) router.get(path, sendPage(page));
-  // документація API: специфікація OpenAPI і файли Swagger UI (сторінка /docs - серед сторінок сайту)
-  router.get('/openapi.json', getOpenApi);
-  router.use('/docs/assets', express.static(SWAGGER_UI_DIR, { maxAge: '1d', index: false }));
-  router.get('/stats', getStats);
-  router.get('/health', getHealth);
-  router.post('/key-requests', postKeyRequest);
-  router.post('/contact', postContact);
-  router.post('/telegram/webhook', postTelegramWebhook);
-  return router;
+
+  // усі маршрути цього роутера - без ключа
+  // prettier-ignore
+  return router
+    .get('/openapi.json',       getOpenApi)
+    .use('/docs/assets',        swaggerAssets)
+    .get('/stats',              getStats)
+    .get('/health',             getHealth)
+    .post('/key-requests',      postKeyRequest)
+    .post('/contact',           postContact)
+    .post('/telegram/webhook',  postTelegramWebhook);
 };

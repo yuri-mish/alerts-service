@@ -374,14 +374,14 @@
       Підходить для власних звітів і аналізу.</p>
     <div class="table-wrap"><table>
       <tr><th>Параметр</th><th>Опис</th></tr>
-      <tr><td><code>month</code></td><td>Місяць <code>YYYY-MM</code>, напр. <code>2026-11</code></td></tr>
+      <tr><td><code>month</code></td><td><b>Обов'язковий.</b> Місяць <code>YYYY-MM</code>, напр. <code>2026-11</code></td></tr>
       <tr><td><code>region</code></td><td>UID регіону або кілька через кому: <code>14,31</code></td></tr>
       <tr><td><code>location</code></td><td>UID території (район, громада): <code>75</code> або <code>75,76</code></td></tr>
       <tr><td><code>level</code></td><td><code>red</code> або <code>yellow</code></td></tr>
       <tr><td><code>format</code></td><td><code>csv</code> — файл для Excel (роздільник <code>;</code>, UTF-8 з BOM)</td></tr>
       <tr><td><code>limit</code></td><td>Максимум рядків (за замовчуванням 50 000)</td></tr>
     </table></div>
-    <p style="margin-top:8px">Обов’язково вкажіть хоча б одну територію: <code>region</code> або <code>location</code>; <code>month</code> — за бажанням.
+    <p style="margin-top:8px">Без <code>region</code> і <code>location</code> — усі області.
       Сортування — за початком, далі за територією.</p>
 
     <div class="tabs" role="tablist" data-group="periods">
@@ -442,7 +442,7 @@ const minutes = rows.reduce((sum, row) =&gt; sum + (row.duration_min ?? 0), 0);<
     <div class="table-wrap"><table>
       <tr><th>Параметр</th><th>Опис</th></tr>
       <tr><td><code>month</code></td><td><b>Обов'язковий.</b> Місяць <code>YYYY-MM</code></td></tr>
-      <tr><td><code>region</code></td><td>UID регіону або список через кому</td></tr>
+      <tr><td><code>region</code></td><td>UID регіону або список через кому; без <code>region</code> і <code>location</code> — усі області</td></tr>
       <tr><td><code>location</code></td><td>UID території або список через кому</td></tr>
       <tr><td><code>by</code></td><td><code>location</code> — розбити підсумок по територіях</td></tr>
     </table></div>
@@ -489,7 +489,7 @@ console.log(`${total.alerts} тривог, ${total.hours} год`);</code></pre>
         (<code>НомерТревоги</code> лишається як серед усіх тривог доби)</td></tr>
       <tr><td><code>format</code></td><td><code>csv</code> — файл замість JSON</td></tr>
     </table></div>
-    <p>Потрібен хоча б один із <code>region</code>, <code>location</code>. Невідомий параметр (наприклад, опечатка) — помилка <code>400</code>.</p>
+    <p>Без <code>region</code> і <code>location</code> — усі області за місяць. Невідомий параметр (наприклад, опечатка) — помилка <code>400</code>.</p>
 
     <div class="tabs" role="tablist" data-group="onec">
       <button class="tab" role="tab" aria-selected="true" data-tab="1c">1С</button>

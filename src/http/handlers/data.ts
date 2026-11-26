@@ -17,45 +17,37 @@ import {
 
 // --- параметри запитів ---
 
-/** Хоча б одна територія: без region і location запит тягнув би всю країну (вимога користувача, 16.11.2026) */
-const hasTerritory = (q: { region?: number[]; location?: number[] }) => Boolean(q.region || q.location);
-const TERRITORY_REQUIRED = 'specify region or location (at least one)';
-
+// Обов'язковий лише month (вимога користувача, 26.11.2026): обсяг відповіді - один місяць.
+// Без region і location - усі області.
 // Схеми рядка запиту - суворі (z.strictObject): невідомий параметр (опечатка `levle=`, непідтримуваний фільтр) -> 400,
 // а не мовчки ігнорується (вимога користувача, 16.11.2026).
 
-export const periodsQuery = z
-  .strictObject({
-    month: monthField.optional(),
-    region: intListField.optional(),
-    location: intListField.optional(),
-    level: levelField.optional(),
-    limit: intField.optional(),
-    format: z.string().optional(),
-  })
-  .refine(hasTerritory, TERRITORY_REQUIRED);
+export const periodsQuery = z.strictObject({
+  month: monthField,
+  region: intListField.optional(),
+  location: intListField.optional(),
+  level: levelField.optional(),
+  limit: intField.optional(),
+  format: z.string().optional(),
+});
 
-export const oneCQuery = z
-  .strictObject({
-    month: monthField,
-    region: intListField.optional(),
-    location: intListField.optional(),
-    level: levelField.optional(),
-    format: z.string().optional(),
-  })
-  .refine(hasTerritory, TERRITORY_REQUIRED);
+export const oneCQuery = z.strictObject({
+  month: monthField,
+  region: intListField.optional(),
+  location: intListField.optional(),
+  level: levelField.optional(),
+  format: z.string().optional(),
+});
 
-export const summaryQuery = z
-  .strictObject({
-    month: monthField,
-    region: intListField.optional(),
-    location: intListField.optional(),
-    by: z.string().optional(),
-  })
-  .refine(hasTerritory, TERRITORY_REQUIRED);
+export const summaryQuery = z.strictObject({
+  month: monthField,
+  region: intListField.optional(),
+  location: intListField.optional(),
+  by: z.string().optional(),
+});
 
 /** 'YYYY-MM-01' -> 'YYYY-MM' для імені CSV-файлу */
-const monthLabel = (firstDay: string | undefined): string => firstDay?.slice(0, 7) ?? 'all';
+const monthLabel = (firstDay: string): string => firstDay.slice(0, 7);
 
 export const createDataRouter = ({ db, requireClientKey }: Deps): Router => {
   const getPeriods = async (req: Request, res: Response) => {
@@ -68,13 +60,13 @@ export const createDataRouter = ({ db, requireClientKey }: Deps): Router => {
               ap.duration_min, ap.alert_id, a.closed_by,
               ap.started_at, ap.finished_at
          from alert_periods ap join alerts a on a.id = ap.alert_id
-        where ($1::date is null or ap.month = $1)
+        where ap.month = $1
           and ($2::int[] is null or ap.region_uid = any($2))
           and ($3::int[] is null or ap.location_uid = any($3))
           and ($4::text is null or ap.level = $4)
         order by date_trunc('second', ap.started_at), ap.location_uid, ap.alert_id
         limit $5`,
-      [q.month ?? null, q.region ?? null, q.location ?? null, q.level ?? null, limit],
+      [q.month, q.region ?? null, q.location ?? null, q.level ?? null, limit],
     );
     if (q.format === 'csv') {
       const rows = r.rows.map(({ started_at, finished_at, ...rest }) => rest);

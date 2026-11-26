@@ -6,15 +6,15 @@ import { config } from '../core/config.ts';
 import { oneCQuery, periodsQuery, summaryQuery } from './handlers/data.ts';
 
 /** Пояснення до параметрів рядка запиту (однакові назви - однаковий зміст у всіх ендпоінтах) */
+// prettier-ignore
 const PARAM_DESCRIPTIONS: Record<string, string> = {
-  month: 'Місяць у форматі YYYY-MM, напр. 2026-11',
-  region: 'UID областей через кому, напр. 14,31 (31 - м. Київ, 14 - Київська обл.). Потрібен `region` або `location`',
-  location:
-    'UID територій (районів, громад, міст) через кому, напр. 75 (Бучанський район). Потрібен `region` або `location`',
-  level: 'Рівень тривоги',
-  limit: 'Найбільше рядків у відповіді (за замовчуванням 50 000, не більше 200 000)',
-  format: '`csv` - файл для Excel (роздільник `;`, кодування UTF-8 з BOM); без параметра - JSON',
-  by: '`location` - окремий рядок для кожної території; без параметра - підсумок по регіону',
+  month:    'Місяць у форматі YYYY-MM, напр. 2026-11',
+  region:   'UID областей через кому, напр. 14,31 (31 - м. Київ, 14 - Київська обл.). Без `region` і `location` - усі області',
+  location: 'UID територій (районів, громад, міст) через кому, напр. 75 (Бучанський район). Без `region` і `location` - усі області',
+  level:    'Рівень тривоги',
+  limit:    'Найбільше рядків у відповіді (за замовчуванням 50 000, не більше 200 000)',
+  format:   '`csv` - файл для Excel (роздільник `;`, кодування UTF-8 з BOM); без параметра - JSON',
+  by:       '`location` - окремий рядок для кожної території; без параметра - підсумок по регіону',
 };
 
 /** JSON Schema поля (як його вводить клієнт - рядок до перетворення) без службового $schema */
@@ -55,8 +55,8 @@ const errorResponse = (description: string, examples: Record<string, string>) =>
 
 const ERRORS = {
   400: errorResponse('Неправильні параметри (у `error` - яке саме поле і що не так)', {
+    'Не вказано місяць': 'month: required (YYYY-MM)',
     'Місяць не у форматі YYYY-MM': 'month: must be YYYY-MM',
-    'Не вказано ні region, ні location': 'specify region or location (at least one)',
     'Невідомий параметр (опечатка)': 'Unrecognized key: "levle"',
     'Неправильний рівень': 'level: must be yellow or red',
   }),
@@ -138,7 +138,8 @@ export const createOpenApiSpec = () => ({
       'оновлюється щоночі. Тривоги розрізані по добах (київський час): одна тривога через північ - два рядки. ' +
       'Тривоги, що ще тривали на момент нічного оновлення, теж є (кінець - null) - як бонус; ' +
       'для стану тривог у реальному часі сервіс не призначений. ' +
-      'У кожному запиті потрібна хоча б одна територія: `region` або `location`. ' +
+      'Обов’язковий лише `month`. Території - `region` (області) і `location` (райони, громади, міста); ' +
+      'без них - усі області. ' +
       'Ключ - у заголовку `X-Api-Key` (отримати - на головній сторінці). Ліміт - 6 запитів на хвилину на ключ.',
   },
   servers: [{ url: config.publicUrl }],
@@ -168,7 +169,7 @@ export const createOpenApiSpec = () => ({
         tags: ['Тривоги'],
         operationId: 'getPeriods',
         summary: 'Відрізки тривог по добах',
-        description: 'Потрібна хоча б одна територія: `region` або `location`; `month` - необов’язковий.',
+        description: 'Обов’язковий лише `month`; без `region` і `location` - усі області.',
         parameters: queryParameters(periodsQuery),
         responses: {
           200: { description: 'Відрізки', content: { ...json({ type: 'array', items: periodItem }), ...csvContent } },

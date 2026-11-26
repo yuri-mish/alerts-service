@@ -47,11 +47,14 @@ test("HTTP: ключ, /summary з об'єднанням перекриттів, 
     assert.equal(text.trim().split('\r\n').length, 1 + 2); // заголовок + дві червоні тривоги
 
     assert.equal((await fetch(`${base}/periods?month=2026-13&region=31`, { headers: h })).status, 400);
-    // без території (ні region, ні location) - 400 на всіх ендпоінтах даних, навіть з місяцем
-    for (const path of ['/periods?month=2026-11', '/summary?month=2026-11', '/1c/alerts?month=2026-11']) {
-      const noTerritory = await fetch(`${base}${path}`, { headers: h });
-      assert.equal(noTerritory.status, 400, path);
-      assert.deepEqual(await noTerritory.json(), { error: 'specify region or location (at least one)' }, path);
+    // без території (ні region, ні location) - усі області; без month - 400 (обов'язковий лише він)
+    for (const path of ['/periods', '/summary', '/1c/alerts']) {
+      const allRegions = await fetch(`${base}${path}?month=2026-11`, { headers: h });
+      assert.equal(allRegions.status, 200, path);
+      assert.ok(((await allRegions.json()) as unknown[]).length > 0, path);
+      const noMonth = await fetch(`${base}${path}?region=31`, { headers: h });
+      assert.equal(noMonth.status, 400, path);
+      assert.deepEqual(await noMonth.json(), { error: 'month: required (YYYY-MM)' }, path);
     }
 
     // вигрузка для 1С
@@ -340,7 +343,7 @@ test('документація API: /openapi.json зі схем zod, сторі�
     assert.deepEqual(Object.keys(spec.paths).sort(), ['/1c/alerts', '/alerts/{id}', '/periods', '/summary']);
     const month = spec.paths['/1c/alerts'].get.parameters.find((p) => p.name === 'month');
     assert.equal(month?.required, true, 'month обов’язковий для /1c/alerts');
-    assert.equal(spec.paths['/periods'].get.parameters.find((p) => p.name === 'month')?.required, false);
+    assert.equal(spec.paths['/periods'].get.parameters.find((p) => p.name === 'month')?.required, true);
     // у кожного коду помилки - свої приклади (а не той самий текст)
     const responses = (
       spec.paths['/periods'].get as unknown as {
@@ -352,7 +355,7 @@ test('документація API: /openapi.json зі схем zod, сторі�
     ).responses;
     const errorsOf = (code: string) =>
       Object.values(responses[code].content['application/json'].examples).map((e) => e.value.error);
-    assert.ok(errorsOf('400').includes('specify region or location (at least one)'));
+    assert.ok(errorsOf('400').includes('month: required (YYYY-MM)'));
     assert.deepEqual(errorsOf('401'), ['X-Api-Key required']);
     assert.ok(errorsOf('429').every((error) => /retry in \d+s$/.test(error)));
 
