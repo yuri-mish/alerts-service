@@ -14,24 +14,30 @@ const PARAM_DESCRIPTIONS: Record<string, string> = {
   level:    'Рівень тривоги',
   limit:    'Найбільше рядків у відповіді (за замовчуванням 50 000, не більше 200 000)',
   format:   '`csv` - файл для Excel (роздільник `;`, кодування UTF-8 з BOM); без параметра - JSON',
-  by:       '`location` - окремий рядок для кожної території; без параметра - підсумок по регіону',
+  bylocation: 'Без значення (`&bylocation`) або `true` - окремий рядок для кожної території (району, громади); без параметра - підсумок по області. Це групування, а не фільтр: фільтр - `location`',
 };
 
-/** JSON Schema поля (як його вводить клієнт - рядок до перетворення) без службового $schema */
+/** JSON Schema поля (як його вводить клієнт - рядок до перетворення) без службових $schema і позначок meta */
 const inputSchema = (field: z.ZodType): object => {
-  const { $schema: _ignored, ...schema } = z.toJSONSchema(field, { io: 'input' });
+  const { $schema: _schema, flag: _flag, hidden: _hidden, ...schema } = z.toJSONSchema(field, { io: 'input' });
   return schema;
 };
 
-/** Параметри OpenAPI з полів схеми zod; обов'язкове - те, без чого схема не проходить */
+/**
+ * Параметри OpenAPI з полів схеми zod; обов'язкове - те, без чого схема не проходить.
+ * Приховані поля (meta hidden - старі синоніми) не описуються; прапорець можна передати без значення.
+ */
 const queryParameters = (schema: z.ZodObject) =>
-  Object.entries(schema.shape).map(([name, field]) => ({
-    name,
-    in: 'query',
-    required: !field.safeParse(undefined).success,
-    description: PARAM_DESCRIPTIONS[name],
-    schema: inputSchema(field),
-  }));
+  Object.entries(schema.shape)
+    .filter(([, field]) => field.meta()?.hidden !== true)
+    .map(([name, field]) => ({
+      name,
+      in: 'query',
+      required: !field.safeParse(undefined).success,
+      description: PARAM_DESCRIPTIONS[name],
+      ...(field.meta()?.flag === true ? { allowEmptyValue: true } : {}),
+      schema: inputSchema(field),
+    }));
 
 const json = (schema: object, example?: unknown) => ({ 'application/json': { schema, example } });
 
@@ -114,8 +120,8 @@ const summaryItem = {
   type: 'object',
   properties: {
     region_uid: { type: 'integer' },
-    location_uid: { type: 'integer', description: 'Лише з `by=location`' },
-    location_title: { type: 'string', description: 'Лише з `by=location`' },
+    location_uid: { type: 'integer', description: 'Лише з `bylocation`' },
+    location_title: { type: 'string', description: 'Лише з `bylocation`' },
     level: { type: 'string', enum: ['yellow', 'red', 'unknown', 'all'], description: '`all` - усі рівні разом' },
     alerts: { type: 'integer', description: 'Кількість тривог' },
     hours: {

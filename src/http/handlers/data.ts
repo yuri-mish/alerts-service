@@ -2,6 +2,7 @@
 import express, { type Request, type Response, type Router } from 'express';
 import { z } from 'zod';
 import {
+  flagField,
   HttpError,
   idParam,
   intField,
@@ -43,7 +44,10 @@ export const summaryQuery = z.strictObject({
   month: monthField,
   region: intListField.optional(),
   location: intListField.optional(),
-  by: z.string().optional(),
+  /** Підсумок окремо по кожній території (району, громаді), а не по області */
+  bylocation: flagField,
+  /** Старий синонім `by=location` (26.11.2026 замінено на bylocation); у документації не показується */
+  by: z.literal('location', { error: 'must be location (use bylocation instead)' }).optional().meta({ hidden: true }),
 });
 
 /** 'YYYY-MM-01' -> 'YYYY-MM' для імені CSV-файлу */
@@ -110,7 +114,7 @@ export const createDataRouter = ({ db, requireClientKey }: Deps): Router => {
 
   const getSummary = async (req: Request, res: Response) => {
     const q = parseQuery(summaryQuery, req);
-    const byLocation = q.by === 'location';
+    const byLocation = q.bylocation ?? q.by === 'location';
     const key = byLocation ? 'ap.region_uid, ap.location_uid' : 'ap.region_uid';
     // hours = об'єднання інтервалів (тривоги в районах/громадах перекриваються).
     // Активна тривога (без кінця) рахується до поточного моменту: з відкритим кінцем об'єднаний діапазон

@@ -141,7 +141,10 @@
   (`/periods`, `/summary`, `/1c/alerts`, `/alerts/:id`), `createAdminRouter` (ключі, заявки, `/sync`, `/runs`, регіони);
   маршрути — внизу кожного файлу: `router.get('/periods', requireClientKey, getPeriods)`;
   `src/http/common.ts` — типи `Ctx`/`Deps`, `HttpError`, `sendCsv`, `idParam` (не число → 404), поля запиту zod
-  (`monthField`, `intListField`, `intField`, `levelField`) і `parseQuery`/`parseBody` (порожні `?x=` = відсутні).
+  (`monthField`, `intListField`, `intField`, `levelField`, `flagField`) і `parseQuery`/`parseBody` (порожні `?x=` =
+  відсутні; але порожній **прапорець** — `flagField`, позначка `.meta({ flag: true })` — = увімкнений: `?bylocation`).
+  `/summary`: групування по територіях — `bylocation` (26.11.2026, замість `by=location`, який плутали з фільтром
+  `location`); `by=location` лишився прихованим синонімом (`.meta({ hidden: true })` — не в OpenAPI), інше значення `by` → 400.
   Валідація — **zod** (16.11.2026): схеми поруч з місцем використання (`periodsQuery`, `keyRequestSchema`, `newKeyBody`…);
   `src/core/validation.ts` — `requiredText(max)`, `optionalText(max)`, `isBotSubmission` (пастка `website`), `validate` →
   `ValidationError` («поле: проблема») → `handleError` відповідає 400.

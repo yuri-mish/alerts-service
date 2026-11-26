@@ -57,6 +57,33 @@ test("HTTP: ключ, /summary з об'єднанням перекриттів, 
       assert.deepEqual(await noMonth.json(), { error: 'month: required (YYYY-MM)' }, path);
     }
 
+    // /summary: прапорець bylocation (без значення або true) і старий синонім by=location - рядок на територію
+    const summaryRows = async (extra: string) => {
+      const res = await fetch(`${base}/summary?month=2026-11&region=31${extra}`, { headers: h });
+      assert.equal(res.status, 200, extra);
+      return (await res.json()) as { location_uid?: number }[];
+    };
+    for (const extra of ['&bylocation', '&bylocation=true', '&by=location']) {
+      const rows = await summaryRows(extra);
+      assert.ok(rows.length > 0 && rows.every((row) => row.location_uid !== undefined), extra);
+    }
+    // порожнє звичайне поле (`location=`) - відсутнє, а не прапорець
+    for (const extra of ['', '&bylocation=false', '&location=']) {
+      assert.ok(
+        (await summaryRows(extra)).every((row) => row.location_uid === undefined),
+        extra,
+      );
+    }
+    // помилка в значенні - 400, а не мовчки «не та» відповідь (by=location=5332 - справжня помилка клієнта)
+    for (const [extra, error] of [
+      ['&bylocation=abc', 'bylocation: must be without value, true or false'],
+      ['&by=location=5332', 'by: must be location (use bylocation instead)'],
+    ]) {
+      const res = await fetch(`${base}/summary?month=2026-11&region=31${extra}`, { headers: h });
+      assert.equal(res.status, 400, extra);
+      assert.deepEqual(await res.json(), { error }, extra);
+    }
+
     // вигрузка для 1С
     const ex = (await (await fetch(`${base}/1c/alerts?month=2026-11&region=31`, { headers: h })).json()) as Record<
       string,
@@ -347,6 +374,13 @@ test('документація API: /openapi.json зі схем zod, сторі�
     const month = spec.paths['/1c/alerts'].get.parameters.find((p) => p.name === 'month');
     assert.equal(month?.required, true, 'month обов’язковий для /1c/alerts');
     assert.equal(spec.paths['/periods'].get.parameters.find((p) => p.name === 'month')?.required, true);
+    // /summary: прапорець bylocation описаний (можна без значення), прихований синонім by - ні
+    const summaryParams = spec.paths['/summary'].get.parameters as { name: string; allowEmptyValue?: boolean }[];
+    assert.equal(summaryParams.find((p) => p.name === 'bylocation')?.allowEmptyValue, true);
+    assert.equal(
+      summaryParams.find((p) => p.name === 'by'),
+      undefined,
+    );
     // у кожного коду помилки - свої приклади (а не той самий текст)
     const responses = (
       spec.paths['/periods'].get as unknown as {

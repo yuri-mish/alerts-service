@@ -462,7 +462,8 @@ const minutes = rows.reduce((sum, row) =&gt; sum + (row.duration_min ?? 0), 0);<
       <tr><td><code>month</code></td><td><b>Обов'язковий.</b> Місяць <code>YYYY-MM</code></td></tr>
       <tr><td><code>region</code></td><td>UID регіону або список через кому; без <code>region</code> і <code>location</code> — усі області</td></tr>
       <tr><td><code>location</code></td><td>UID території або список через кому</td></tr>
-      <tr><td><code>by</code></td><td><code>location</code> — розбити підсумок по територіях</td></tr>
+      <tr><td><code>bylocation</code></td><td>Без значення — розбити підсумок по територіях (районах, громадах).
+        Це групування, а не фільтр: які території брати — задає <code>location</code></td></tr>
     </table></div>
 
     <div class="tabs" role="tablist" data-group="summary">
@@ -474,7 +475,7 @@ const minutes = rows.reduce((sum, row) =&gt; sum + (row.duration_min ?? 0), 0);<
 
 # по районах Київської області
 curl -H "X-Api-Key: ВАШ_КЛЮЧ" \
-  "https://alerts.starsam.net/summary?month=2026-11&amp;region=14&amp;by=location"</code></pre></div>
+  "https://alerts.starsam.net/summary?month=2026-11&amp;region=14&amp;bylocation"</code></pre></div>
     <div class="panel" data-group="summary" data-tab="js" hidden><pre><code>const res = await fetch('https://alerts.starsam.net/summary?month=2026-11&amp;region=31', {
   headers: { 'X-Api-Key': 'ВАШ_КЛЮЧ' },
 });
@@ -489,7 +490,7 @@ console.log(`${total.alerts} тривог, ${total.hours} год`);</code></pre>
   { "region_uid": 31, "level": "yellow", "alerts": 78, "hours": 58.7,  "still_active": 0 }
 ]</code></pre>
     <p><code>alerts</code> — кількість різних тривог; <code>hours</code> — години; <code>still_active</code> — скільки
-      ще триває. З <code>by=location</code> у кожному рядку є ще <code>location_uid</code> і <code>location_title</code>.</p>
+      ще триває. З <code>bylocation</code> у кожному рядку є ще <code>location_uid</code> і <code>location_title</code>.</p>
   </div>
 
   <!-- 3. 1c -->

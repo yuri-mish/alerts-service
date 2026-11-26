@@ -110,10 +110,26 @@ export const intListField = z
 
 export const levelField = z.enum(LEVELS, { error: `must be ${LEVELS.join(' or ')}` });
 
-/** Рядок запиту за схемою; порожні значення (`?region=`) вважаються відсутніми */
+/** Прапорець: `?bylocation` (без значення) або `=true` - увімкнено, `=false` - вимкнено, інше - 400 */
+export const flagField = z
+  .enum(['true', 'false'], { error: 'must be without value, true or false' })
+  .transform((value) => value === 'true')
+  .optional()
+  .meta({ flag: true });
+
+const isFlag = (field: unknown): boolean => field instanceof z.ZodType && field.meta()?.flag === true;
+
+/**
+ * Рядок запиту за схемою. Порожні значення (`?region=`) вважаються відсутніми,
+ * а порожній прапорець (`?bylocation`, див. flagField) - увімкненим.
+ */
 export const parseQuery = <Schema extends z.ZodType>(schema: Schema, req: Request): z.output<Schema> => {
-  const filled = Object.entries(req.query).filter(([, value]) => value !== '');
-  return validate(schema, Object.fromEntries(filled));
+  const shape: Record<string, unknown> = schema instanceof z.ZodObject ? schema.shape : {};
+  const entries = Object.entries(req.query).flatMap(([name, value]) => {
+    if (value !== '') return [[name, value]];
+    return isFlag(shape[name]) ? [[name, 'true']] : [];
+  });
+  return validate(schema, Object.fromEntries(entries));
 };
 
 /** Тіло запиту (JSON) за схемою; без тіла - як порожній об'єкт */
