@@ -86,7 +86,9 @@
   ключем; запити без ключа не рахуються. CORS `*`. На `GET /` — лендінг `src/site/landing.html` (опис сервісу, `/periods`, `/summary`, `/1c/alerts` з прикладами
   curl/JS/1С), без ключа; при зміні API/лімітів/регіонів — оновлювати і його. Вгорі плашка «безкоштовно, тестовий режим».
   Для пошуковиків (`src/site/site.ts`): `/robots.txt` (закриває шляхи API, крім `/stats` — інакше Google рендерить лендінг без графіка), `/sitemap.xml`, `/favicon.svg`, `/og-image.png` (og:image 1200×630), `/hero-bg.jpg` (фон шапки лендінгу), canonical,
-  OG-теги, JSON-LD (WebSite + WebAPI); статичні сторінки відповідають і на HEAD. Google Search Console — за користувачем.
+  OG-теги, JSON-LD (WebSite + WebAPI), `/llms.txt` (`src/site/llms.txt` — опис для AI-асистентів; **оновлювати разом з
+  лендінгом**); статичні сторінки відповідають і на HEAD. Перший клієнт (26.11.2026, Power BI, громади) прийшов з
+  ChatGPT (`utm_source=chatgpt.com`) — тому на лендінгу акцент на громадах, тривалості, Power BI/Excel і вкладка Power BI. Google Search Console — за користувачем.
 - Заявка на ключ: модальне вікно на лендінгу (Ім'я, Компанія — необов'язково, Для чого, Email) → `POST /key-requests`
   (без ключа, 3 з IP/год за `X-Real-IP`, приховане поле-пастка `website`) → таблиця `key_requests`
   і повідомлення користувачу в Telegram (`src/keys/key-requests.ts`; env `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`).

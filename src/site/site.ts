@@ -1,4 +1,4 @@
-// Публічні статичні сторінки без ключа: лендінг, документація API, robots.txt, sitemap.xml, іконка.
+// Публічні статичні сторінки без ключа: лендінг, документація API, robots.txt, sitemap.xml, llms.txt, іконка.
 // Усе читається/збирається один раз при старті.
 import { readFileSync, statSync } from 'node:fs';
 
@@ -88,6 +88,11 @@ export const createSitePages = (publicUrl: string): Map<string, StaticPage> => {
         cacheControl: 'no-store',
         headers: { 'X-Robots-Tag': 'noindex, nofollow, noarchive' },
       },
+    ],
+    // короткий опис сервісу для AI-асистентів (пропозиція llmstxt.org); оновлювати разом з лендінгом
+    [
+      '/llms.txt',
+      { contentType: 'text/plain; charset=utf-8', body: readFileSync(fileUrl('llms.txt')), cacheControl: ONE_HOUR },
     ],
     [
       '/favicon.svg',

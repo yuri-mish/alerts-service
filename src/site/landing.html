@@ -11,7 +11,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>API історії повітряних тривог</title>
-<meta name="description" content="Архів повітряних тривог по областях, районах і громадах України: початок, кінець і тривалість, червоний і жовтий рівні, години за місяць, вигрузка для 1С. Безкоштовний API.">
+<meta name="description" content="Архів повітряних тривог по областях, районах і громадах України: початок, кінець і тривалість кожної тривоги, червоний і жовтий рівні, години за місяць. JSON і CSV для Power BI, Excel, вигрузка для 1С. Безкоштовний API.">
 <meta name="robots" content="index, follow">
 <meta name="google-site-verification" content="YKrMOj68EH1wi_msz7xEnW3MZO4mRYrp4dIUSqM4HZQ">
 <link rel="canonical" href="https://alerts.starsam.net/">
@@ -51,7 +51,7 @@
       "@type": "WebAPI",
       "name": "API історії повітряних тривог в Україні",
       "url": "https://alerts.starsam.net/",
-      "description": "HTTP API з архівом повітряних тривог по областях, районах і громадах України: відрізки тривог по добах, підсумки годин за місяць з урахуванням перекриттів, вигрузка для 1С.",
+      "description": "HTTP API з архівом повітряних тривог по областях, районах і громадах України: початок, кінець і тривалість кожної тривоги (відрізки по добах), підсумки годин за місяць з урахуванням перекриттів. JSON і CSV для Power BI, Excel, вигрузка для 1С.",
       "documentation": "https://alerts.starsam.net/docs",
       "inLanguage": "uk",
       "isAccessibleForFree": true,
@@ -262,8 +262,8 @@
   <div class="hero">
     <p class="eyebrow">API · готова інтеграція з 1С</p>
     <h1>Історія повітряних тривог для ваших систем</h1>
-    <p class="lead">Архів тривог по областях, районах і громадах України через HTTP API: JSON і CSV для будь-якої
-      системи. Для 1С є готова вигрузка: рядок на кожну добу тривоги, київський час, місяць одним запитом.</p>
+    <p class="lead">Архів тривог по областях, районах і <b>громадах</b> України через HTTP API: <b>тривалість кожної
+      тривоги</b> і години за місяць у JSON і CSV — для <b>Power BI, Excel</b> чи будь-якої системи. Для 1С є готова вигрузка: рядок на кожну добу тривоги, київський час, місяць одним запитом.</p>
   </div>
 
   <figure class="onec" aria-label="Приклад: вигрузка тривог у формі 1С">
@@ -388,6 +388,20 @@
       <button class="tab" role="tab" aria-selected="true" data-tab="curl">curl</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="js">JavaScript</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="csv">CSV</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="powerbi">Power BI</button>
+    </div>
+    <div class="panel" data-group="periods" data-tab="powerbi" hidden>
+      <p>Power BI / Excel: <b>Отримати дані → Пустий запит → Розширений редактор</b>, вставте код:</p>
+<pre><code>let
+    Source = Json.Document(Web.Contents("https://alerts.starsam.net", [
+        RelativePath = "periods",
+        Query = [month = "2026-11"],
+        Headers = [#"X-Api-Key" = "ВАШ_КЛЮЧ"]
+    ])),
+    Alerts = Table.FromRecords(Source)
+in
+    Alerts</code></pre>
+      <p>Без <code>region</code> — уся країна за місяць. Для кількох місяців — окремий запит на кожен.</p>
     </div>
     <div class="panel" data-group="periods" data-tab="curl"><pre><code>curl -H "X-Api-Key: ВАШ_КЛЮЧ" \
   "https://alerts.starsam.net/periods?month=2026-11&amp;location=75"</code></pre></div>
@@ -408,7 +422,7 @@ const minutes = rows.reduce((sum, row) =&gt; sum + (row.duration_min ?? 0), 0);<
 14;75;Бучанський район;raion;yellow;2026-11;2026-11-01;2026-11-01 00:41:26;2026-11-01 04:50:49;249;315511;api
 14;75;Бучанський район;raion;yellow;2026-11;2026-11-01;2026-11-01 05:10:34;2026-11-01 05:26:30;16;315556;api</code></pre>
     </div>
-    <div class="panel" data-group="periods" data-tab="curl js">
+    <div class="panel" data-group="periods" data-tab="curl js powerbi">
 <pre><code>[
   {
     "region_uid": 14,
